@@ -83,7 +83,6 @@ Capabilities that will be installed:
   ✓ ios-simulator   — Screenshots and simctl commands
   ✓ maestro         — E2E test automation
   ✓ zustand         — State management with MMKV persistence    (optional)
-  ✓ skia            — React Native Skia canvas                  (optional)
 
   All capabilities are ON by default. Toggle OFF what you don't need.
 

@@ -67,6 +67,15 @@ Creates a new core skill in `plugins/metis-core/skills/` with proper frontmatter
 ### `/validate` — Convention Linter
 Lint and validate SKILL.md and capability.md files for convention compliance. Checks frontmatter, structure, architecture rules, and cross-references against the registry. Run `/validate --all` or `/validate {name}`. **Cost: Opus only. Repo management skill.**
 
+### `/add-capability` — Registry Management
+Add a new capability to the metis-core registry. Creates the capability file, updates registry.json, and optionally adds it to profiles. **Cost: Opus only. Repo management skill.**
+
+### `/pull-capability` — Community Import
+Pull a community capability from a git repo URL or local path into the metis-core registry. Validates format and registers it. **Cost: Opus only. Repo management skill.**
+
+### `/release` — Version & Tag
+Create a new metis release — bump version, update registry, create git tag, and optionally push. **Cost: Opus only. Repo management skill.**
+
 ## Capabilities
 
 Capabilities are markdown files with YAML frontmatter that teach agents about specific technologies:
@@ -123,7 +132,7 @@ Profiles bundle capabilities with sensible defaults:
 
 ## Versioning
 
-- **v0.1.0** — Initial release with 10 capabilities, 5 profiles, 12 skills
+- **v0.1.0** — Initial release with 10 capabilities, 5 profiles, 14 skills
 - Capabilities have independent semver in frontmatter
 - Consumer projects pin versions in `.metis/capabilities/manifest.json`
 - Metis repo uses git tags for stable snapshots

@@ -14,8 +14,7 @@
     "maestro"
   ],
   "optional_capabilities": [
-    "zustand",
-    "skia"
+    "zustand"
   ],
   "defaults": {
     "verify_command": "npx tsc --noEmit",

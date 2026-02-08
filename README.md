@@ -22,7 +22,7 @@ Parallel task execution with capability profiles, budget tracking, and codebase-
 ### Add this marketplace
 
 ```
-/plugin marketplace add <owner>/metis
+/plugin marketplace add chensagi/metis
 ```
 
 ### Install the plugin
