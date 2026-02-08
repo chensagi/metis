@@ -79,16 +79,18 @@ Cross-reference commit messages against task titles. If there are commits for fe
 
 ### Step 3: Analyze Each Task
 
-For each task in `.metis/tasks/todo/`, spawn an Explore agent (or analyze directly for small backlogs) that:
+**Small backlogs (< 10 tasks):** Analyze each task directly — you (Opus) read each spec, grep for key terms, check file existence, and assign status. No agents needed.
 
-1. **Reads the task spec** — understand what it wants to achieve
-2. **Searches the codebase** for evidence of implementation:
-   - Grep for key function names, component names, module actions mentioned in the task
-   - Check if files the task wants to create already exist
-   - Look for similar patterns that might already solve the task's goal
-3. **Checks for conflicts** — has the architecture changed in ways that make the task's approach outdated?
-4. **Evaluates feasibility** — are the dependencies/libraries/APIs the task assumes still available?
-5. **Assigns a status assessment:**
+**Large backlogs (10+ tasks):** Use the two-phase approach described in "Spawning Strategy" below. Haiku agents gather raw evidence, then you (Opus) reason about the findings and assign status.
+
+For each task, the analysis must determine:
+
+1. **Evidence of implementation** — grep for key function names, component names, check if target files exist
+2. **Conflicts** — has the architecture changed in ways that make the task's approach outdated?
+3. **Feasibility** — are the dependencies/libraries/APIs the task assumes still available?
+4. **Cross-task dependencies** — does this task overlap with or depend on other tasks?
+
+**Status assessments** (assigned by Opus only — never by leaf agents):
 
 | Assessment | Meaning |
 |------------|---------|
@@ -292,34 +294,73 @@ This is useful for re-evaluating a specific task before starting work on it.
 
 ---
 
-## Spawning Strategy
+## Spawning Strategy (2-Layer Leaf-Spine)
 
-**For small backlogs (< 10 tasks):** Analyze each task directly — read the spec, grep for key terms, check file existence. No agents needed.
+Triage is a reasoning task — judgment (assigning DONE/PARTIAL/STALE status) stays with Opus. Haiku agents only gather raw evidence. This follows the metis architecture: leaves gather data, spine reasons about it.
 
-**For larger backlogs (10+ tasks):** Spawn up to 3 Explore agents in parallel, each analyzing a batch of tasks:
+**For small backlogs (< 10 tasks):** Opus analyzes directly. No agents needed.
+
+**For larger backlogs (10+ tasks):** Two-phase approach:
+
+### Phase 1: Data Gathering (Haiku Leaves)
+
+Spawn up to 3 Haiku agents in parallel, each gathering raw evidence for a batch of tasks. These agents collect data — they do NOT assign status or make judgments.
 
 ```
 Task({
-  description: "Triage tasks ${startNum}-${endNum}",
-  prompt: `You are a triage agent. Analyze each task against the current codebase.
+  description: "Gather evidence for tasks ${startNum}-${endNum}",
+  prompt: `You are a data-gathering agent. Your job is to collect RAW EVIDENCE about each task — nothing more.
 
 Read the project's CLAUDE.md (if it exists) for codebase conventions.
 
-For each task in your batch:
-1. Read the task file
-2. Search the codebase for evidence the task is already done, partially done, or conflicts with current code
-3. Check if the technical approach described still makes sense
-4. Assign a status: DONE, PARTIAL, STALE, BLOCKED, READY, or QUESTIONABLE
-5. Write a brief explanation with file paths as evidence
+For each task in your batch, gather:
+1. Read the task file — note what it wants to achieve and which files/components it targets
+2. Grep for key function names, component names, module names from the task spec
+3. Check if files the task wants to create already exist (use Glob)
+4. Check git history for relevant commits: git log --oneline --all --grep="${keyword}" (try 2-3 keywords per task)
+5. List dependencies/libraries the task assumes — check if they exist in package.json/pyproject.toml/go.mod
+6. Note any code patterns that seem related to the task's goal
+
+IMPORTANT: You are gathering RAW DATA only.
+- DO NOT assign status (no DONE, PARTIAL, STALE, BLOCKED, READY, QUESTIONABLE)
+- DO NOT make judgments about whether a task is complete or obsolete
+- DO NOT recommend actions
+- Just report what you found — files, code snippets, git commits, dependency presence
 
 Tasks to analyze: ${taskFiles.join(', ')}
+
+For each task, write a structured evidence block:
+
+## Task ${num}: ${title}
+### Files Found
+- list of relevant files discovered with brief content notes
+### Code Evidence
+- grep matches with file:line references
+### Git History
+- relevant commits found
+### Dependencies
+- which assumed deps exist / don't exist
+### Raw Notes
+- anything else relevant
 
 Write your findings to .metis/triage-batch-${batchNum}.md`,
   subagent_type: "Explore",
   model: "haiku",
-  run_in_background: true
+  run_in_background: true,
+  max_turns: 15
 })
 ```
+
+### Phase 2: Synthesis and Judgment (Opus Spine)
+
+After all Haiku agents complete, YOU (the orchestrator, Opus) read all `.metis/triage-batch-*.md` files and:
+
+1. **Assign status** for each task (DONE / PARTIAL / STALE / BLOCKED / READY / QUESTIONABLE) based on the raw evidence
+2. **Cross-reference tasks** — identify dependencies and conflicts that individual agents couldn't see (e.g., Task 12 and Task 18 both want to create the same auth module)
+3. **Detect untracked work** — cross-reference git history from all batches to find shipped features with no matching task
+4. **Generate the triage report** with synthesized analysis (see Step 4 format)
+
+This separation ensures consistent judgment. Individual Haiku agents can't see the full backlog, so they can't detect cross-task conflicts or make accurate status calls. Only the spine has the full picture.
 
 ---
 

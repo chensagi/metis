@@ -2,6 +2,16 @@
 
 Self-evolving swarm orchestration for Claude Code. Ships with capability profiles that teach agents about your project's technology stack, plus learning that improves over time.
 
+## Architecture: 2-Layer Leaf-Spine
+
+Every skill runs in the chat context as Opus (the spine) and spawns Task agents as Sonnet or Haiku (the leaves). No nested spawning — this is the maximum depth Claude Code supports.
+
+- **Spine (Opus):** Decomposition, judgment, synthesis, verification, commits
+- **Leaf (Sonnet):** Implementation — writes code, fixes errors
+- **Leaf (Haiku):** Exploration — gathers data, runs checks, reports raw output
+
+The spine never delegates judgment to leaves. Haiku agents report evidence; Opus assigns status. Sonnet agents implement code; Opus verifies and commits.
+
 ## Skills
 
 ### `/install` — Project Setup

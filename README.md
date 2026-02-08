@@ -106,13 +106,17 @@ All state lives in `.metis/` inside your project. Hybrid git tracking:
 | `/pull-capability` | Import a community capability from URL or local path |
 | `/release` | Bump version, update registry, create git tag |
 
-### Model Hierarchy
+### 2-Layer Leaf-Spine Architecture
 
-| Task Type | Model | When |
-|---|---|---|
-| Thinking/reasoning | Opus | Orchestration, decomposition, learn analysis |
-| Implementation | Sonnet | Task-filler agents, fix agents |
-| Exploration/trivial | Haiku | Diagnostics, data gathering, test checks |
+All metis skills use a strict 2-layer architecture. Skills run in the chat context (Opus — the spine), spawning Task agents (Sonnet/Haiku — the leaves). Claude Code does not support nested agent spawning, so this IS the maximum depth — and it's all you need.
+
+| Layer | Model | Role |
+|-------|-------|------|
+| **Spine** (Layer 1) | Opus | Orchestration, decomposition, judgment, synthesis, commits |
+| **Leaf** (Layer 2) | Sonnet | Implementation — code writing, fix agents (max 30 turns) |
+| **Leaf** (Layer 2) | Haiku | Exploration — diagnostics, data gathering, test checks (max 10-15 turns) |
+
+**Key principle:** Haiku gathers raw data. Opus reasons about it. Sonnet implements solutions. Opus verifies and commits. The spine never delegates judgment to leaves.
 
 ## Versioning
 

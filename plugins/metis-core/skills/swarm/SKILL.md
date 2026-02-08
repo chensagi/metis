@@ -10,6 +10,34 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TaskOutput
 
 You are executing the `/swarm` command. This skill lets you run multiple tasks in parallel from a single session.
 
+## Architecture: 2-Layer Leaf-Spine
+
+All metis skills follow a strict 2-layer architecture. Claude Code does not support nested agent spawning — this is the maximum depth available, and it's enforced consistently.
+
+```
+Layer 1 — SPINE (Orchestrator): Opus
+  Runs in chat context via disable-model-invocation: true
+  Responsibilities: decomposition, spawning, synthesis, judgment
+
+Layer 2 — LEAVES (Workers): Sonnet or Haiku
+  Spawned via Task tool, run_in_background: true
+  Cannot spawn further agents (hard constraint)
+  Sonnet: Implementation (code writing, max 30 turns)
+  Haiku: Exploration/diagnostics (data gathering, max 10-15 turns)
+```
+
+**Key principle:** Haiku gathers raw data. Opus reasons about it. Sonnet implements solutions. Opus verifies and commits. The spine never delegates judgment to leaves.
+
+### How This Applies Across Skills
+
+| Skill | Opus (Spine) | Sonnet (Leaf) | Haiku (Leaf) |
+|-------|-------------|---------------|-------------|
+| `/swarm` | Decompose tasks, verify, commit | Implement work items | Diagnose errors |
+| `/triage` | Synthesize report, assign status | — | Gather codebase evidence |
+| `/swarm test` | Correlate failures, root causes | — | Run compile/lint/test |
+| `/swarm integrate` | Analyze issues, plan fixes | Fix integration errors | Run checks |
+| `/learn` | Analyze gaps, recommend | — | Explore project data |
+
 ## Bootstrap
 
 Before starting, ensure `.metis/` exists with a valid config:

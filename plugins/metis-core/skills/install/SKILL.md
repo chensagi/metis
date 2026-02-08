@@ -51,17 +51,17 @@ Capabilities that will be installed:
   ✓ expo            — Expo CLI, Metro, OTA updates
   ✓ ios-simulator   — Screenshots and simctl commands
   ✓ maestro         — E2E test automation
+  ✓ zustand         — State management with MMKV persistence    (optional)
+  ✓ skia            — React Native Skia canvas                  (optional)
 
-Optional capabilities:
-  ○ zustand         — State management with MMKV persistence
-  ○ skia            — React Native Skia canvas
+  All capabilities are ON by default. Toggle OFF what you don't need.
 
 ═══════════════════════════════════════════════════
 ```
 
 Use `AskUserQuestion` to let the user:
 - Confirm the profile
-- Toggle optional capabilities
+- Toggle OFF any optional capabilities they don't want (all are ON by default)
 - Choose a different profile
 
 ### Step 3: Ask Project-Specific Questions
