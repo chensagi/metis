@@ -70,8 +70,6 @@ Lint and validate SKILL.md and capability.md files for convention compliance. Ch
 ### `/add-capability` — Registry Management
 Add a new capability to the metis-core registry. Creates the capability file, updates registry.json, and optionally adds it to profiles. **Cost: Opus only. Repo management skill.**
 
-### `/pull-capability` — Community Import
-Pull a community capability from a git repo URL or local path into the metis-core registry. Validates format and registers it. **Cost: Opus only. Repo management skill.**
 
 ### `/release` — Version & Tag
 Create a new metis release — bump version, update registry, create git tag, and optionally push. **Cost: Opus only. Repo management skill.**
@@ -132,7 +130,7 @@ Profiles bundle capabilities with sensible defaults:
 
 ## Versioning
 
-- **v0.1.0** — Initial release with 10 capabilities, 5 profiles, 14 skills
+- **v0.1.0** — Initial release with 10 capabilities, 5 profiles, 13 skills
 - Capabilities have independent semver in frontmatter
 - Consumer projects pin versions in `.metis/capabilities/manifest.json`
 - Metis repo uses git tags for stable snapshots

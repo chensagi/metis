@@ -112,7 +112,6 @@ This reduces prompt size by 60-80% for focused tasks, saving tokens and keeping 
 | Skill | Description |
 |-------|-------------|
 | `/add-capability` | Add a new capability to the registry |
-| `/pull-capability` | Import a community capability from URL or local path |
 | `/scaffold-skill` | Create a new core skill with proper structure, frontmatter, and templates |
 | `/validate` | Lint and validate SKILL.md and capability.md files for convention compliance |
 | `/release` | Bump version, update registry, create git tag |
@@ -250,7 +249,6 @@ metis/
 │       │   ├── learn/            # Analyze & suggest
 │       │   ├── add-metiskill/    # Custom skill creator
 │       │   ├── add-capability/   # Registry management
-│       │   ├── pull-capability/  # Community import
 │       │   ├── scaffold-skill/   # Core skill generator
 │       │   ├── validate/         # Convention linter
 │       │   └── release/          # Version + tag
