@@ -3,7 +3,7 @@ name: triage
 description: Audit all tasks against the current codebase, detect stale/obsolete/partial tasks, suggest actions, create new tasks, and maintain .metis/tasks/project.md as the living project plan
 argument-hint: [task-number|create "task title"] (optional - triage a specific task, create a new task, or leave blank for full backlog)
 disable-model-invocation: true
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TaskOutput
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TaskOutput, WebSearch, WebFetch
 ---
 
 # Triage — Codebase-Aware Task Auditor
@@ -294,9 +294,9 @@ This is useful for re-evaluating a specific task before starting work on it.
 
 ---
 
-## Spawning Strategy (2-Layer Leaf-Spine)
+## Spawning Strategy (3-Layer Architecture)
 
-Triage is a reasoning task — judgment (assigning DONE/PARTIAL/STALE status) stays with Opus. Haiku agents only gather raw evidence. This follows the metis architecture: leaves gather data, spine reasons about it.
+Triage is a reasoning task — judgment (assigning DONE/PARTIAL/STALE status) stays with Opus (L1). Haiku agents (L2) only gather raw evidence, including web research for staleness detection. L0 dispatches between them.
 
 **For small backlogs (< 10 tasks):** Opus analyzes directly. No agents needed.
 
@@ -320,6 +320,11 @@ For each task in your batch, gather:
 4. Check git history for relevant commits: git log --oneline --all --grep="${keyword}" (try 2-3 keywords per task)
 5. List dependencies/libraries the task assumes — check if they exist in package.json/pyproject.toml/go.mod
 6. Note any code patterns that seem related to the task's goal
+7. For tasks referencing specific libraries or APIs, use WebSearch to check:
+   - Is the library still maintained? What's the latest version?
+   - Has the API the task assumes changed in recent versions?
+   - Are there known migration guides if versions have shifted?
+   Report raw findings — do NOT judge staleness (that's Opus's job)
 
 IMPORTANT: You are gathering RAW DATA only.
 - DO NOT assign status (no DONE, PARTIAL, STALE, BLOCKED, READY, QUESTIONABLE)

@@ -2,7 +2,7 @@
 name: pull-capability
 description: Pull a community capability from a git repo URL or local path into the metis-core registry. Validates format and registers it.
 argument-hint: [url-or-path] (git repo URL or local path to a capability.md file)
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Pull Capability — Community Import

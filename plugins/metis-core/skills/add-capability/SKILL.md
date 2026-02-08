@@ -2,7 +2,7 @@
 name: add-capability
 description: Add a new capability to the metis-core registry. Creates the capability file, updates registry.json, and optionally adds it to profiles.
 argument-hint: [capability-name] ["description"]
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Add Capability — Registry Management

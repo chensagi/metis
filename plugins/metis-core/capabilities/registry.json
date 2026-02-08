@@ -54,6 +54,12 @@
       "description": "Rust project conventions, Cargo, and tooling",
       "requires": [],
       "path": "rust/capability.md"
+    },
+    "metis-dev": {
+      "version": "0.1.0",
+      "description": "Conventions for developing the Metis plugin — skill format, capability format, architecture patterns",
+      "requires": [],
+      "path": "metis-dev/capability.md"
     }
   }
 }

@@ -3,40 +3,44 @@ name: swarm
 description: Orchestrate parallel task execution with automatic dependency management and centralized progress tracking
 argument-hint: [status|stop|audit|integrate|test|--budget N|--controlled] (optional - defaults to start)
 disable-model-invocation: true
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TaskOutput
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TaskOutput, WebSearch, WebFetch
 ---
 
 # Swarm Orchestrator
 
-You are executing the `/swarm` command. This skill lets you run multiple tasks in parallel from a single session.
+You are executing the `/swarm` command. This skill lets you run multiple tasks in parallel from a single session. For best results, run `/swarm` in a **dedicated conversation** — start it and let it loop continuously until all tasks are done, budget is exhausted, or you stop it with `/swarm stop`. State persists in `.metis/agents.json`, so it's always safe to restart in a new session.
 
-## Architecture: 2-Layer Leaf-Spine
+## Architecture: 3-Layer Dispatcher
 
-All metis skills follow a strict 2-layer architecture. Claude Code does not support nested agent spawning — this is the maximum depth available, and it's enforced consistently.
+The swarm runs as a dispatcher on L0 (your Claude Code session — any model).
+It spawns Opus for thinking and Sonnet/Haiku for execution. The nesting constraint
+(subagents can't spawn subagents) means L0 handles ALL spawning.
 
 ```
-Layer 1 — SPINE (Orchestrator): Opus
-  Runs in chat context via disable-model-invocation: true
-  Responsibilities: decomposition, spawning, synthesis, judgment
-
-Layer 2 — LEAVES (Workers): Sonnet or Haiku
-  Spawned via Task tool, run_in_background: true
-  Cannot spawn further agents (hard constraint)
-  Sonnet: Implementation (code writing, max 30 turns)
-  Haiku: Exploration/diagnostics (data gathering, max 10-15 turns)
+L0 (this skill, any model) — mechanical routing, file moves, agent tracking
+  ↓ spawns (foreground, blocking)
+L1 Opus — decomposition, research direction, evaluation, judgment
+  ↓ returns structured decisions to L0
+L0 reads decisions
+  ↓ spawns (background)
+L2 Sonnet/Haiku — implementation, web research, diagnostics
+  ↓ returns results via TaskOutput
+L0 processes results
+  ↓ spawns Opus again (foreground) for evaluation
+Loop
 ```
 
-**Key principle:** Haiku gathers raw data. Opus reasons about it. Sonnet implements solutions. Opus verifies and commits. The spine never delegates judgment to leaves.
+**Key principle:** Opus THINKS (decomposition, research queries, evaluation criteria). Agents DO (code writing, web searching, diagnostics). Opus DECIDES (verification, commit/reject). L0 routes mechanically between them.
 
 ### How This Applies Across Skills
 
-| Skill | Opus (Spine) | Sonnet (Leaf) | Haiku (Leaf) |
-|-------|-------------|---------------|-------------|
-| `/swarm` | Decompose tasks, verify, commit | Implement work items | Diagnose errors |
-| `/triage` | Synthesize report, assign status | — | Gather codebase evidence |
-| `/swarm test` | Correlate failures, root causes | — | Run compile/lint/test |
-| `/swarm integrate` | Analyze issues, plan fixes | Fix integration errors | Run checks |
-| `/learn` | Analyze gaps, recommend | — | Explore project data |
+| Skill | L0 (Dispatcher) | L1 Opus (Spine) | L2 Sonnet/Haiku (Leaves) |
+|-------|-----------------|-----------------|--------------------------|
+| `/swarm` | Route, track, file moves | Decompose, evaluate, judge | Implement work items, diagnose |
+| `/triage` | Spawn agents, collect results | Synthesize report, assign status | Gather codebase evidence |
+| `/swarm test` | Spawn check agents | Correlate failures, root causes | Run compile/lint/test |
+| `/swarm integrate` | Coordinate fix cycle | Analyze issues, plan fixes | Fix errors, run checks |
+| `/learn` | Spawn explorer | Analyze gaps, recommend | Explore project data, web search |
 
 ## Bootstrap
 
@@ -56,7 +60,29 @@ After bootstrap, load the project's capabilities for use in agent prompts:
 1. Read `.metis/capabilities/manifest.json` (if exists) to get the list of active capabilities
 2. For each capability listed, read `.metis/capabilities/{name}.md`
 3. Extract the content under `## Agent Instructions` from each capability file
-4. Store these instructions — they'll be injected into every agent prompt (see "Spawning Agents")
+4. Store these instructions — they'll be selectively injected into agent prompts (see "Capability Subsetting" and "Spawning Agents")
+
+### Capability Subsetting
+
+**Not every agent needs every capability.** When spawning agents, inject ONLY the capabilities relevant to that specific work item — not the full installed set.
+
+How the orchestrator selects capabilities for a work item:
+
+1. Look at the work item's target files and description
+2. Match against each capability's `provides` tags and the file types involved
+3. Include only capabilities whose features are relevant to the work item
+
+**Examples:**
+- Backend API task → include typescript, skip react-native, ios-simulator, maestro
+- UI component task → include typescript, react-native, skip backend-specific capabilities
+- Type definitions task → include only typescript
+- E2E test task → include maestro, ios-simulator, skip others
+
+**Why this matters:**
+- Reduces prompt size by 60-80% for focused tasks
+- Keeps agents focused on relevant patterns
+- Saves tokens — every capability injected costs money in agent context
+- Prevents agents from applying wrong patterns (e.g., React Native patterns in a Node.js backend file)
 
 ## How It Works
 
@@ -215,32 +241,70 @@ EOF
 
 ## Spawning Agents
 
-### Standard Task — Decompose then Fill
+### Standard Task — Dispatcher Pattern
 
-The orchestrator (you, running on Opus) decomposes tasks into focused work items, then spawns Sonnet agents to fill each one. This is more cost-effective and reliable than sending one agent the entire task.
+The swarm uses L0 as a mechanical dispatcher. L0 reads task files, spawns Opus for thinking, and spawns Sonnet/Haiku for execution. This decouples the user's session model from the orchestration intelligence.
 
 **Step 1: Move the task file**
 ```bash
 git mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}
 ```
 
-**Step 2: Read and decompose the task**
+**Step 2: Spawn Opus for decomposition (foreground, blocking)**
 
-Read `.metis/tasks/doing/${filename}` and break it into 1-3 focused work items. Each work item should:
-- Target specific files (e.g., "create auth middleware and validation utils")
-- Include the exact interfaces/types the files should export (copy from task spec)
-- Be independent enough to implement without the other work items existing yet
+L0 sends the task spec + codebase context to Opus, which explores, thinks, and returns structured work items.
 
-**Decomposition strategy:**
-1. **Types/interfaces first**: If the task defines shared types, create a work item for the types file
-2. **Core logic**: Group related implementation files into 1-2 work items
-3. **Integration/wiring**: The last work item should wire everything together and handle exports
+```
+Task({
+  description: "Decompose task ${num}: ${name}",
+  prompt: `You are the Metis orchestrator. Read this task spec and decompose it into work items.
 
-For simple tasks (<=3 files), use a single work item. For complex tasks (4+ files), split into 2-3 work items.
+## Task Spec
+${taskFileContents}
 
-**Step 3: Spawn worker agents**
+## Instructions
+1. Read the full task spec carefully
+2. Explore the codebase area: grep for key names, glob for target dirs, read neighboring files
+3. Consider if web research would improve the plan — search for relevant docs/patterns if so
+4. Break into 1-3 focused work items. Each work item must:
+   - Target specific files
+   - Include exact interfaces/types to export (from task spec)
+   - Be independent enough to implement without other work items existing yet
+5. For each work item, generate research hints: what APIs/libraries/docs the agent should look up
+6. Select relevant capabilities per work item (capability subsetting)
 
-For each work item, spawn a focused agent. Read `.metis/config.json` for `verify_command` and load capability instructions (gathered during bootstrap).
+## Decomposition Strategy
+- Types/interfaces first → core logic → integration/wiring
+- Simple tasks (<=3 files): single work item
+- Complex tasks (4+ files): 2-3 work items
+
+## Project Capabilities Available
+${allCapabilityNames}
+
+## Return Format
+Return a JSON object with this structure:
+{
+  "work_items": [
+    {
+      "description": "what this work item does",
+      "files": ["path/to/file.ts"],
+      "capabilities": ["typescript", "react-native"],
+      "research_hints": ["Search for X API docs", "Check Y library version"],
+      "types": "interfaces/types to use",
+      "details": "implementation specifics",
+      "model": "sonnet"
+    }
+  ]
+}`,
+  subagent_type: "general-purpose",
+  model: "opus",
+  run_in_background: false
+})
+```
+
+**Step 3: L0 reads Opus output and spawns worker agents (background)**
+
+L0 parses the work items from Opus's response and spawns Sonnet/Haiku agents for each. Read `.metis/config.json` for `verify_command`.
 
 <agent-prompt>
 Task({
@@ -250,8 +314,15 @@ Task({
 ## Project Context
 Read the project's CLAUDE.md (if it exists) for codebase conventions and architecture.
 
-## Project Capabilities
-${capabilityInstructions}
+## Project Capabilities (subset — relevant to this work item)
+${relevantCapabilityInstructions}
+
+## Research Hints
+${researchHints}
+
+When you encounter errors or unfamiliar APIs, use WebSearch to find solutions.
+Use WebFetch to read specific documentation pages.
+All web access MUST go through these tools.
 
 ## Rules
 - Stay focused on YOUR work item — don't implement files outside your scope
@@ -280,30 +351,51 @@ ${specificLogicForTheseFiles}`,
 })
 </agent-prompt>
 
-**How `capabilityInstructions` is built:**
+**How `relevantCapabilityInstructions` is built:**
 
-The orchestrator reads each active capability's "Agent Instructions" section and concatenates them. For a React Native + Expo + Zustand project, this might produce:
+Opus selects relevant capabilities during decomposition (Step 2). L0 reads each selected capability's "Agent Instructions" section and injects them. For a UI component work item in a React Native + Expo + Zustand project:
 
 ```
 ### TypeScript
 Every task MUST end with npx tsc --noEmit returning ZERO errors...
-Use explicit types for function parameters...
 
 ### React Native
 Use React Native primitives — NOT web HTML elements...
-Always use StyleSheet.create() for styles...
-
-### Expo
-If the project uses Expo Router, directory structure = routes...
 
 ### Zustand
 Naming: use{Name}Store for the hook...
-Always use selectors: useMyStore(s => s.specificField)...
 ```
 
-This is injected directly into the prompt. The orchestrator decides how much to include based on relevance to the work item (e.g., skip `ios-simulator` instructions for a backend logic task).
+This is injected directly into the prompt. See "Capability Subsetting" for the full selection process.
 
-**Step 4: Capture agent_task_id**
+**Step 4: L0 waits for completion, then spawns Opus for evaluation (foreground)**
+
+After agents complete (via TaskOutput), L0 spawns Opus to evaluate:
+
+```
+Task({
+  description: "Evaluate task ${num}: ${name}",
+  prompt: `Evaluate these agent results against the task spec. Run verification.
+Return verdict: pass/fail per work item, with reasons.
+
+## Task Spec
+${taskFileContents}
+
+## Agent Results
+${agentOutputs}
+
+## Verification
+Run ${verify_command} and report the result.
+Check that key files exist and match the spec.`,
+  subagent_type: "general-purpose",
+  model: "opus",
+  run_in_background: false
+})
+```
+
+**Step 5: L0 acts on verdict** — file moves, commits, or spawns fix agents for failures.
+
+**Step 6: Capture agent_task_id**
 
 The Task tool response includes a task ID when `run_in_background: true`. Store this as `agent_task_id` in `.metis/agents.json` — it's required for `TaskOutput` to wait on the agent in the WAIT step.
 
@@ -314,7 +406,25 @@ The Task tool response includes a task ID when `run_in_background: true`. Store 
 
 Each agent gets `max_turns: 30` (focused scope needs fewer turns than a full task).
 
-### Fix Flow and Integration Flow
+### Fix Flow — Debugging with Web Research
+
+When a task goes to `needs_review`, the fix flow starts with web research:
+
+**Phase 0: Web Research First (NEW)**
+
+Before spawning a fix agent, the dispatcher:
+1. Extracts exact error messages from the failed agent's output
+2. Spawns Opus (foreground) to analyze errors and design search queries
+3. Includes those queries as research hints in the fix agent's prompt
+
+The fix agent then:
+1. Searches the web FIRST for each error (`WebSearch` with error message + library name)
+2. If solution found → apply it
+3. If no solution (the 20%) → switch to deep evidence collection:
+   - Full error + stack trace
+   - Relevant code and dependencies
+   - Recent git changes
+   - Structured evidence report returned to L0 for Opus to evaluate
 
 For detailed agent prompts and two-phase workflows:
 - **Fix incomplete tasks**: See [fix-flow.md](fix-flow.md)
@@ -467,6 +577,7 @@ On first run, if `.metis/agents.json` shows tasks as `completed` but their files
 6. **TaskOutput timeout** — Max 10 minutes per wait cycle. Long-running agents get re-waited in the next iteration
 7. **Context accumulation** — Very long swarm sessions accumulate context. Auto-compaction handles this in most cases, but if the session becomes sluggish, restarting `/swarm` in a new conversation is always safe (state is in .metis/agents.json + filesystem)
 8. **Budget is estimated** — Claude Code does not expose actual cost to skills. The `--budget` feature uses rough estimates. Always check actual spend with `/cost` after the session
+9. **Session isolation** — For long-running swarm sessions, use a dedicated conversation. The swarm loop is designed to run continuously — start it and let it work. Use `/swarm stop` to stop spawning, or close the session. All state persists in `.metis/agents.json` and the filesystem
 </rules>
 
 ---

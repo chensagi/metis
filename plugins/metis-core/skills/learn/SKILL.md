@@ -2,6 +2,7 @@
 name: learn
 description: Analyze the project and suggest capability improvements, config tuning, and custom skills. Uses the best model for intelligent analysis.
 argument-hint: [--deep] (optional - run a thorough analysis instead of quick scan)
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TaskOutput, WebSearch, WebFetch
 ---
 
 # Metis Learn — Analyze & Suggest Improvements
@@ -136,6 +137,11 @@ Collect:
 7. List all files in .maestro/ (if exists)
 8. Read the first 20 lines of 5-10 representative source files to understand code patterns
 9. Check which verify/test/lint commands actually work (run them, capture output)
+10. Use WebSearch to discover:
+    - Tools/libraries that complement the current stack
+    - Better alternatives to current dependencies (if they exist)
+    - Best practices for the project's technology combination
+    Report raw findings only.
 
 Output everything you find in a structured report with raw data. Do not filter or analyze — the orchestrator will do that.`,
   subagent_type: "Explore",
@@ -173,11 +179,26 @@ When the Haiku agent returns its raw data, YOU (Opus) perform the actual analysi
    - Does it match how this project actually uses the technology?
    - Project-specific conventions that should be added?
 
-### Step 3: Present Deep Report
+### Step 3: Tool/Library Discovery
 
-Format YOUR analysis into an actionable report with clear categories, evidence, and prioritization.
+During deep analysis, search the web for tools that could benefit the project:
 
-### Step 4: Apply (same as quick scan)
+1. Based on the project's stack, search for complementary tools
+2. Check if recurring error patterns would be solved by a different library
+3. Look for tools that automate manual patterns found in the codebase
+
+**The suggestion flow:**
+1. Agent reports raw findings (library name, what it does, popularity)
+2. Opus (you) evaluates: is this genuinely useful for THIS project?
+3. Web search to validate: actively maintained? compatible? stable?
+4. Only include in the learn report if it passes validation
+5. Present as a suggestion, not a recommendation
+
+### Step 4: Present Deep Report
+
+Format YOUR analysis into an actionable report with clear categories, evidence, and prioritization. Include tool/library suggestions as a separate section with evidence and reasoning.
+
+### Step 5: Apply (same as quick scan)
 
 ---
 

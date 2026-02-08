@@ -1,0 +1,17 @@
+{
+  "name": "metis-dev",
+  "version": "0.1.0",
+  "description": "Metis plugin development — authoring skills, capabilities, and profiles",
+  "detect": {
+    "files": ["plugins/metis-core/capabilities/registry.json"]
+  },
+  "capabilities": ["metis-dev"],
+  "optional_capabilities": [],
+  "defaults": {
+    "verify_command": null,
+    "test_command": null,
+    "lint_command": null,
+    "src_dirs": ["plugins/metis-core/skills/", "plugins/metis-core/capabilities/"]
+  },
+  "questions": []
+}

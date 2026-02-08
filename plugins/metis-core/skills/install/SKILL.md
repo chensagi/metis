@@ -2,7 +2,7 @@
 name: install
 description: Set up or update .metis/ in the current project — detect project type, choose capabilities, configure commands. Idempotent — safe to run multiple times.
 argument-hint: [--update] (optional - run in update mode to check for new capabilities)
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Metis Install — Project Setup
@@ -21,6 +21,36 @@ Check if `.metis/` already exists:
 
 ### Step 1: Detect Project Type
 
+#### Pre-check: Existing Orchestrator Detection
+
+Before detecting project type, scan for known AI orchestrator configs:
+
+| Files Found | Orchestrator |
+|---|---|
+| `.cursorrules` or `.cursor/rules` | Cursor |
+| `.github/copilot-instructions.md` | GitHub Copilot |
+| `.windsurfrules` or `.windsurf/rules` | Windsurf |
+| `.aider.conf.yml` or `.aider/` | Aider |
+| `.continue/` or `.continuerc.json` | Continue |
+| `.roo/` or `.roomodes` | Roo Code |
+| `.cline/` or `.clinerules` | Cline |
+
+If any are found, show:
+
+```
+We noticed {orchestrator} configuration in this project.
+Consider running /migrate first to import your existing
+setup (rules, commands, conventions) into Metis.
+
+Continue with fresh install anyway?
+```
+
+Use AskUserQuestion:
+- "Run /migrate first" → tell user to run `/migrate`, then exit
+- "Continue with fresh install" → proceed with normal install flow
+
+#### Profile Detection
+
 Scan the project root for signature files to determine the best profile:
 
 | Files Found | Suggested Profile |
@@ -30,6 +60,7 @@ Scan the project root for signature files to determine the best profile:
 | `pyproject.toml` or `setup.py` or `requirements.txt` | `python-fastapi` |
 | `go.mod` | `go-service` |
 | `Cargo.toml` | (no profile yet — use rust capability directly) |
+| `plugins/metis-core/capabilities/registry.json` | `metis-dev` |
 | None of the above | No profile — ask user to configure manually |
 
 Read the profile JSON from the metis-core `profiles/` directory to get default capabilities and settings.
@@ -113,6 +144,7 @@ tasks/
   "test_command": "{from_profile_or_user}",
   "lint_command": "{from_profile_or_user}",
   "src_dirs": ["{from_profile_or_user}"],
+  "ask_mode": "normal",
   "max_agents": 4,
   "default_budget": null,
   "learning": {

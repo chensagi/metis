@@ -2,7 +2,7 @@
 name: add-metiskill
 description: Add a custom project-specific skill to .metis/skills/. Creates a SKILL.md file that integrates with the metis orchestration system.
 argument-hint: [skill-name] ["description"] (optional - will ask interactively if not provided)
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 
 # Add Metis Skill — Custom Skill Creator
