@@ -6,7 +6,7 @@
   },
   "plugins": [
     {
-      "name": "metis-core",
+      "name": "metis",
       "source": "./plugins/metis-core",
       "description": "Generic swarm orchestration — parallel task execution with automatic dependency management, budget tracking, and codebase-aware triage."
     }

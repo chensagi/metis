@@ -28,7 +28,7 @@ Parallel task execution with capability profiles, budget tracking, and codebase-
 ### Install the plugin
 
 ```
-/plugin install metis-core@metis
+/plugin install metis@metis
 ```
 
 ### Set up your project

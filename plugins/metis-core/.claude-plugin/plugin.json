@@ -1,5 +1,5 @@
 {
-  "name": "metis-core",
+  "name": "metis",
   "description": "Self-evolving swarm orchestration for Claude Code. Capability profiles, budget tracking, and codebase-aware triage across any project.",
   "version": "0.1.0",
   "author": {

@@ -1,4 +1,4 @@
-# metis-core
+# metis
 
 Self-evolving swarm orchestration for Claude Code. Ships with capability profiles that teach agents about your project's technology stack, plus learning that improves over time.
 

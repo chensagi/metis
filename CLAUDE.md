@@ -201,7 +201,7 @@ metis/
 
 ## Testing Changes
 
-1. Install the plugin in a test project: `/plugin install metis-core@metis`
+1. Install the plugin in a test project: `/plugin install metis@metis`
 2. Run `/install` to set up `.metis/`
 3. Test the modified skill with a real task
 4. Verify agent prompts are concise and capability subsetting works
