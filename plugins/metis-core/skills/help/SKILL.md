@@ -149,7 +149,6 @@ Show everything from Tier A (the metis repo has `.metis/` too), **plus** a Repo 
 ```
 Repo Management (metis-core development)
   /add-capability     Add a new capability to the registry
-  /pull-capability    Import community capability from URL
   /scaffold-skill     Create a new core skill
   /validate           Lint skills and capabilities
   /release            Bump version, tag, and publish
