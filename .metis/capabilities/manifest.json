@@ -1,0 +1,8 @@
+{
+  "metis_version": "0.1.0",
+  "profile": "metis-dev",
+  "installed_at": "2026-02-09T00:00:00.000Z",
+  "capabilities": {
+    "metis-dev": { "version": "0.1.0", "installed_at": "2026-02-09T00:00:00.000Z" }
+  }
+}

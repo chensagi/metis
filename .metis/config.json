@@ -1,0 +1,18 @@
+{
+  "metis_version": "0.1.0",
+  "project_name": "metis",
+  "profile": "metis-dev",
+  "profile_version": "0.1.0",
+  "verify_command": null,
+  "test_command": null,
+  "lint_command": null,
+  "src_dirs": ["plugins/metis-core/skills/", "plugins/metis-core/capabilities/"],
+  "ask_mode": "normal",
+  "max_agents": 4,
+  "default_budget": null,
+  "learning": {
+    "auto_suggest": true,
+    "last_learned": null
+  },
+  "custom_capabilities": []
+}
