@@ -1,0 +1,10 @@
+# Metis state (local only — not tracked in git)
+agents.json
+learnings.json
+tasks/
+
+# Everything else is tracked:
+# - capabilities/ (team-shared agent knowledge)
+# - skills/ (custom project skills)
+# - config.json (project settings)
+# - .gitignore (this file)
