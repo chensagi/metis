@@ -1,0 +1,59 @@
+{
+  "version": "0.1.0",
+  "capabilities": {
+    "typescript": {
+      "version": "0.1.0",
+      "description": "TypeScript compilation, type checking, and project conventions",
+      "requires": [],
+      "path": "typescript/capability.md"
+    },
+    "react-native": {
+      "version": "0.1.0",
+      "description": "React Native component patterns, native primitives, and StyleSheet conventions",
+      "requires": ["typescript"],
+      "path": "react-native/capability.md"
+    },
+    "expo": {
+      "version": "0.1.0",
+      "description": "Expo CLI, Metro bundler, OTA updates, and development builds",
+      "requires": ["react-native"],
+      "path": "expo/capability.md"
+    },
+    "ios-simulator": {
+      "version": "0.1.0",
+      "description": "iOS Simulator interaction — screenshots, simctl commands, app installation",
+      "requires": ["react-native"],
+      "path": "ios-simulator/capability.md"
+    },
+    "maestro": {
+      "version": "0.1.0",
+      "description": "Maestro E2E test automation — YAML flows, testID conventions, debug output",
+      "requires": ["ios-simulator"],
+      "path": "maestro/capability.md"
+    },
+    "zustand": {
+      "version": "0.1.0",
+      "description": "Zustand state management with optional MMKV persistence",
+      "requires": ["react-native"],
+      "path": "zustand/capability.md"
+    },
+    "python": {
+      "version": "0.1.0",
+      "description": "Python project conventions, virtual environments, and tooling",
+      "requires": [],
+      "path": "python/capability.md"
+    },
+    "go": {
+      "version": "0.1.0",
+      "description": "Go project conventions, modules, and tooling",
+      "requires": [],
+      "path": "go/capability.md"
+    },
+    "rust": {
+      "version": "0.1.0",
+      "description": "Rust project conventions, Cargo, and tooling",
+      "requires": [],
+      "path": "rust/capability.md"
+    }
+  }
+}

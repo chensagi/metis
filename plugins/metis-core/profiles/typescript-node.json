@@ -1,0 +1,20 @@
+{
+  "name": "typescript-node",
+  "version": "0.1.0",
+  "description": "TypeScript Node.js project — APIs, CLIs, or libraries",
+  "detect": {
+    "files": ["tsconfig.json", "package.json"],
+    "not_files": ["app.json", "expo-env.d.ts"]
+  },
+  "capabilities": [
+    "typescript"
+  ],
+  "optional_capabilities": [],
+  "defaults": {
+    "verify_command": "npx tsc --noEmit",
+    "test_command": "npm test",
+    "lint_command": "npx eslint",
+    "src_dirs": ["src/"]
+  },
+  "questions": []
+}

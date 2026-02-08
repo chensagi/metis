@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .metis/agents.json ]; then echo '## Active Metis Swarm State'; cat .metis/agents.json; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

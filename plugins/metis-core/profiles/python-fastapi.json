@@ -1,0 +1,26 @@
+{
+  "name": "python-fastapi",
+  "version": "0.1.0",
+  "description": "Python project — FastAPI, Django, Flask, or general Python",
+  "detect": {
+    "files_any": ["pyproject.toml", "setup.py", "requirements.txt", "Pipfile"]
+  },
+  "capabilities": [
+    "python"
+  ],
+  "optional_capabilities": [],
+  "defaults": {
+    "verify_command": "python -m py_compile",
+    "test_command": "python -m pytest",
+    "lint_command": "python -m ruff check",
+    "src_dirs": ["src/", "app/"]
+  },
+  "questions": [
+    {
+      "key": "uses_mypy",
+      "question": "Does this project use mypy for type checking?",
+      "type": "boolean",
+      "detect": "pyproject.toml:[tool.mypy]"
+    }
+  ]
+}

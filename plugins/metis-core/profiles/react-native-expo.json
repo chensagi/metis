@@ -1,0 +1,41 @@
+{
+  "name": "react-native-expo",
+  "version": "0.1.0",
+  "description": "React Native app with Expo, targeting iOS and Android simulators",
+  "detect": {
+    "files": ["app.json", "node_modules/expo/package.json"],
+    "package_json_deps": ["expo", "react-native"]
+  },
+  "capabilities": [
+    "typescript",
+    "react-native",
+    "expo",
+    "ios-simulator",
+    "maestro"
+  ],
+  "optional_capabilities": [
+    "zustand",
+    "skia"
+  ],
+  "defaults": {
+    "verify_command": "npx tsc --noEmit",
+    "test_command": "npm test",
+    "lint_command": "npx eslint",
+    "src_dirs": ["src/", "app/"]
+  },
+  "questions": [
+    {
+      "key": "bundle_id",
+      "question": "What is your app's bundle ID?",
+      "hint": "e.g., com.company.appname — check app.json under expo.ios.bundleIdentifier",
+      "required": false
+    },
+    {
+      "key": "uses_zustand",
+      "question": "Does this project use Zustand for state management?",
+      "type": "boolean",
+      "detect": "package.json:zustand",
+      "capability": "zustand"
+    }
+  ]
+}

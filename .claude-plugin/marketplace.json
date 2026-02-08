@@ -1,0 +1,14 @@
+{
+  "name": "metis",
+  "description": "Cost-effective swarm orchestration for Claude Code. Parallel task execution, budget tracking, and intelligent triage across any project.",
+  "owner": {
+    "name": "chensagics"
+  },
+  "plugins": [
+    {
+      "name": "metis-core",
+      "source": "./plugins/metis-core",
+      "description": "Generic swarm orchestration — parallel task execution with automatic dependency management, budget tracking, and codebase-aware triage."
+    }
+  ]
+}

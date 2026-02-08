@@ -1,0 +1,19 @@
+{
+  "name": "go-service",
+  "version": "0.1.0",
+  "description": "Go project — services, CLIs, or libraries",
+  "detect": {
+    "files": ["go.mod"]
+  },
+  "capabilities": [
+    "go"
+  ],
+  "optional_capabilities": [],
+  "defaults": {
+    "verify_command": "go build ./...",
+    "test_command": "go test ./...",
+    "lint_command": "golangci-lint run",
+    "src_dirs": ["cmd/", "internal/", "pkg/"]
+  },
+  "questions": []
+}
