@@ -58,6 +58,9 @@ Creates branch, commits, pushes, creates PR, waits for CI, merges. **Cost: Opus 
 ### `/learn` — Analyze & Suggest
 Haiku-powered analysis that finds missing capabilities, config improvements, and custom skill opportunities. Auto-triggers after swarm/task (configurable). `/learn --deep` for thorough analysis. **Cost: Opus + Haiku.**
 
+### `/create-tasks` — Interview-Driven Task Generation
+Conducts a thorough multi-round interview (vision, features, architecture, testing), explores the codebase for context, then generates well-structured tasks in `.metis/tasks/todo/`. **Cost: Opus only.**
+
 ### `/add-metiskill` — Custom Skill Creator
 Scaffolds project-specific skills in `.metis/skills/`. Scans codebase to pre-populate, pulls patterns from installed capabilities. **Cost: Opus only.**
 
@@ -130,7 +133,7 @@ Profiles bundle capabilities with sensible defaults:
 
 ## Versioning
 
-- **v0.1.0** — Initial release with 10 capabilities, 5 profiles, 13 skills
+- **v0.1.0** — Initial release with 10 capabilities, 5 profiles, 14 skills
 - Capabilities have independent semver in frontmatter
 - Consumer projects pin versions in `.metis/capabilities/manifest.json`
 - Metis repo uses git tags for stable snapshots

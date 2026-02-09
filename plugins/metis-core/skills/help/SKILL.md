@@ -72,6 +72,7 @@ Daily Work
   /swarm              Parallel task execution (dedicated session)
   /triage             Audit backlog, detect stale tasks
   /triage create "…"  Add a new task
+  /create-tasks       Interview-driven bulk task generation
   /ship               Create PR, wait for CI, merge
 
 Improvement
