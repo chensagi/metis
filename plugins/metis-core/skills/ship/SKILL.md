@@ -2,7 +2,7 @@
 name: ship
 description: Ship current changes by creating a PR, waiting for CI checks to pass, and merging to main. Use when the user says "ship it", "create a PR and merge", "push this to main", or wants to finalize their changes.
 argument-hint: [branch-name] [commit-message]
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 ---
 
 # Ship Changes to Main
@@ -36,20 +36,41 @@ git remote get-url origin
 ```
 If any of these fail, STOP and tell the user what's missing (not a git repo, `gh` CLI not installed, or no remote configured).
 
-### 1. Check for changes
+### 1. Detect current state
+
+Determine where we're starting from:
+
 ```bash
+git branch --show-current
 git status
 git diff --stat
 ```
-If no changes, tell the user "Nothing to ship — no uncommitted changes found." and STOP. Do NOT proceed.
 
-### 2. Create feature branch
+**Case A: On main (or detached HEAD) with uncommitted changes**
+- Stash or carry changes to the new branch
+- `git checkout -b claude/$0` — uncommitted changes come along automatically
+- If checkout fails due to conflicts, `git stash && git checkout -b claude/$0 && git stash pop`
+
+**Case B: Already on a feature branch (e.g., `claude/something`)**
+- Use the existing branch — do NOT create a new one
+- Check for uncommitted changes and stage/commit them (Steps 3-4)
+- If the branch already has commits ahead of main, those are included in the PR
+
+**Case C: No changes AND no commits ahead of main**
+- Tell the user "Nothing to ship — no uncommitted changes or commits found." and STOP
+
+### 2. Create feature branch (Case A only)
+
+Only if we're on main/detached HEAD:
 ```bash
 git checkout -b claude/$0
 ```
 
 ### 3. Stage changes
-Stage all modified and new files. Be specific — list each file by name. Do NOT use `git add .` or `git add -A`.
+
+If there are uncommitted changes, stage all modified and new files. Be specific — list each file by name. Do NOT use `git add .` or `git add -A`.
+
+If all changes are already committed (Case B with no uncommitted changes), skip to Step 5.
 
 ### 4. Commit
 Create a commit with a descriptive message. Always include the Co-Authored-By trailer:
@@ -61,10 +82,23 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 
 Use HEREDOC format for multi-line commit messages.
 
-### 5. Push to remote
+### 5. Rebase over main and push
+
+Before pushing, rebase over main to ensure the branch is up to date and the PR will be conflict-free:
+
 ```bash
-git push -u origin claude/$0
+git fetch origin main
+git rebase origin/main
 ```
+
+If the rebase has conflicts, STOP. Show the user which files conflict and ask how to proceed. Do NOT force through conflicts.
+
+Then push:
+```bash
+git push -u origin HEAD
+```
+
+If the branch was already pushed and the rebase rewrote history, the push will fail. In that case, ask the user before force-pushing — do NOT force-push automatically.
 
 ### 6. Create Pull Request
 Use `gh pr create` with:
