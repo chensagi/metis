@@ -17,6 +17,13 @@ Run these checks:
 1. Compilation/Type Check: Run ${verify_command} 2>&1 and capture ALL errors
 2. Import Verification: Grep for broken imports (importing from paths that don't exist)
 3. Cross-Module Consistency: Check that modules used by consumers match their actual exports
+4. Wiring Verification: For each recently completed task:
+   a. Find new files created (git diff --name-only against main)
+   b. For each new file, verify it is imported/used by at least one other file
+   c. Check that new route handlers are registered in router files
+   d. Check that new modules are exported from barrel files (index.ts)
+   e. Check that new screens/components are referenced in navigation config
+   f. Report any "orphan" files — created but never connected
 
 Check these recently completed tasks:
 ${completedTasks.map(t => '- Task ' + t.task_id + ': ' + t.task_name).join('\\n')}
@@ -30,6 +37,8 @@ Output format:
 [List any modules missing exports]
 ## Cross-Module Integration Issues
 [List any issues where modules don't wire together correctly]
+## Wiring Issues
+[List any orphan files — created but never imported/registered/connected]
 ## Summary
 - Total errors: N
 - Files affected: [list]

@@ -113,7 +113,13 @@ while tasks remain:
 - User interrupts
 - **Cost budget**: If `--budget` was set and estimated cost exceeds it
 
-**When the loop exits**, display the final status and suggest `/clear` to start a fresh conversation — swarm sessions accumulate heavy context.
+**When the loop exits cleanly** (all tasks done, not budget/interrupt):
+1. Run integration verification automatically (Phase 1 from `integration-flow.md`):
+   - Spawn Haiku diagnostic agent to check cross-task wiring
+   - Use the enhanced integration checklist (includes wiring verification)
+2. If integration passes → display final status, suggest `/clear`
+3. If integration finds issues → enter FIX mode, spawn Sonnet fix agents, re-verify
+4. If interrupted or budget-exhausted → skip auto-integration, just display status and suggest `/clear`
 
 **Priority within each iteration:**
 1. Fix incomplete tasks (highest priority)
@@ -276,11 +282,16 @@ ${taskFileContents}
    - Be independent enough to implement without other work items existing yet
 5. For each work item, generate research hints: what APIs/libraries/docs the agent should look up
 6. Select relevant capabilities per work item (capability subsetting)
+7. Identify wiring requirements: what existing files need to be updated to connect the new code
+   (route registration, barrel exports, navigation config, DI container, app initialization, etc.)
+   Include these as explicit steps in the last work item
 
 ## Decomposition Strategy
 - Types/interfaces first → core logic → integration/wiring
 - Simple tasks (<=3 files): single work item
 - Complex tasks (4+ files): 2-3 work items
+- The LAST work item must include wiring: updating existing files to import/register/connect new modules
+- If only 1 work item: it must include wiring steps, not just file creation
 
 ## Project Capabilities Available
 ${allCapabilityNames}
@@ -302,6 +313,7 @@ Return a JSON object with this structure:
       "research_hints": ["Search for X API docs", "Check Y library version"],
       "types": "interfaces/types to use",
       "details": "implementation specifics",
+      "wiring": ["Add import to src/app/routes.ts", "Export from src/services/index.ts"],
       "model": "sonnet"
     }
   ]
@@ -339,6 +351,7 @@ All web access MUST go through these tools.
 - If shared types are provided, use them exactly as given
 - If you need to import from a sibling module being built by another agent, create the import assuming it will exist
 - Follow existing code patterns in the codebase — read neighboring files to match style
+- Wire your code into the project — don't just create files. Update existing files to import, register, and connect your new modules. Check: barrel exports (index.ts), route registration, navigation config, app initialization. If the work item includes a "wiring" section, follow it exactly
 - Create ALL files listed in the work item requirements — do not skip any
 - Be concise — don't explain what you're doing, just do it. Minimize reasoning output
 - Do NOT repeat the plan or requirements back. Just implement
@@ -386,8 +399,23 @@ After agents complete (via TaskOutput), L0 verifies directly — no Opus evaluat
 
 1. Run `${verify_command} 2>&1 | head -30` — zero errors required. If `verify_command` is null, skip this step
 2. Spot-check that key files from the work item exist (use Glob)
-3. If **clean** → task passes, proceed to completion lifecycle (file move → agents.json update → git commit)
-4. If **errors** → task goes to `needs_review` with errors noted
+3. **Wiring scan** — check that new files are actually connected to the project:
+   ```bash
+   # Find new files from this task's agent
+   new_files=$(git diff --name-only HEAD~1 -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null)
+   # For each new file, check if it's imported anywhere
+   for f in $new_files; do
+     base=$(basename "$f" | sed 's/\.[^.]*$//')
+     if ! grep -r "from.*['\"].*${base}['\"]" src/ --include='*.ts' --include='*.tsx' -q 2>/dev/null; then
+       echo "WARNING: $f is not imported anywhere"
+     fi
+   done
+   ```
+   - Files not imported anywhere → flag as potential wiring issue (task goes to `needs_review`)
+   - Ignore test files, entry points (index.ts, App.tsx), and config files
+   - This is a heuristic — false positives are OK (fix agent will sort them out)
+4. If **clean** → task passes, proceed to completion lifecycle (file move → agents.json update → git commit)
+5. If **errors** → task goes to `needs_review` with errors noted
 
 > **Why no evaluation agent?** Each Opus spawn adds ~5-10KB to context and costs ~$0.50-1.00. The orchestrator can run `verify_command` and Glob directly via Bash — cheaper and context-lighter than spawning an agent that does the same thing.
 
