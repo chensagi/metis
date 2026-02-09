@@ -1,5 +1,7 @@
 # Metis
 
+![Metis Logo](assets/images/metis-logo.jpg)
+
 Cost-aware swarm orchestration for Claude Code.
 
 Metis helps you ship faster with less token waste by combining:

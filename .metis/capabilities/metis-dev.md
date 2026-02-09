@@ -58,6 +58,5 @@ plugins/metis-core/
 
 ### Git Conventions
 
-- Always include `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>` trailer
 - Stage specific files — never `git add -A`
 - Commit messages: imperative mood, concise
