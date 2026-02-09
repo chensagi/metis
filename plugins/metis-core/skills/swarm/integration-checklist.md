@@ -40,6 +40,20 @@ If test_command is configured in `.metis/config.json`, run tests for the verifie
 ${test_command} -- [relevant test files or patterns]
 ```
 
+## 6. Wiring Verification
+
+For each new file created by completed tasks:
+
+- **Import check**: Is the file imported by at least one other file? (`grep -r "from.*filename"`)
+- **Barrel export**: If the file is in a directory with an index.ts, is it re-exported?
+- **Route registration**: If it's a route handler/endpoint, is it registered in the router?
+- **Navigation config**: If it's a screen/page, is it added to the navigator/router config?
+- **Service registration**: If it's a service/provider, is it initialized in the app bootstrap?
+- **Config entries**: If it introduces new config options, are they added to the config schema?
+
+Files that are legitimately standalone (tests, scripts, configs) can be excluded.
+Mark any unconnected file as a FAILED wiring check.
+
 ## Output Format
 
 Provide a structured report:

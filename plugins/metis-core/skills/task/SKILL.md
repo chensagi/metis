@@ -140,6 +140,10 @@ Files to create/modify:
   - path/to/new-file.ts — [what it does]
     - exports: [exact exports with types]
 
+Wiring (existing files to update):
+  - path/to/router.ts — register new route handler
+  - path/to/index.ts — export new module
+
 Patterns to follow:
   - [existing pattern from codebase — reference specific files]
 
@@ -169,6 +173,10 @@ Files to create/modify:
     - function signatures: [exact function names, params, return types]
     - key logic: [what the implementation does, step by step]
 
+Wiring (existing files to update):
+  - path/to/router.ts — register new route handler
+  - path/to/index.ts — export new module
+
 Edge Case Handling:
   - [failure scenario] → [strategy, from Round 2 answers]
 
@@ -192,6 +200,7 @@ Complexity: Medium
 - Which capability instructions apply (for capability subsetting in Step 5)
 - Research hints for unfamiliar APIs or patterns
 - Explicit implementation details per file — not just "add auth" but "add middleware function that checks JWT token from Authorization header, returns 401 if invalid"
+- Wiring — which existing files to update for imports, route registration, barrel exports, navigation config, etc.
 
 Wait for user approval before proceeding. If the user suggests changes, adjust the plan.
 
@@ -246,6 +255,7 @@ ${taskFileContents}
 ## Rules
 - Implement ALL files listed in the plan — do not skip any
 - Follow existing code patterns — read neighboring files to match style
+- Wire your code into the project — don't just create files. Update existing files to import, register, and connect your new modules (barrel exports, route registration, navigation config, app initialization). The plan's "Wiring" section specifies exactly what to update
 - Use exact types and interfaces from the plan
 - Be concise — don't explain what you're doing, just do it. Minimize reasoning output
 - Do NOT repeat the plan or requirements back. Just implement
@@ -283,10 +293,11 @@ Run each configured command from `.metis/config.json`, truncating output:
 2. **Test command** (if configured): `${test_command} 2>&1 | head -30` — find and run matching tests
 3. **Lint command** (if configured): `${lint_command} 2>&1 | head -30` — check changed files
 4. **Spot-check**: Glob for key files listed in the plan to confirm they exist
+5. **Wiring scan**: For each new file created, grep to check it's imported somewhere in the project. If new files exist but aren't imported anywhere (excluding test files and entry points), warn: "Potential wiring issue — [file] is not imported anywhere." The Sonnet fix agent (Step 6b) should wire it if the warning is legitimate
 
 If no commands are configured, warn the user: "No verify/test/lint commands configured in .metis/config.json — verification skipped. Run `/install --update` to configure." Proceed only after the user acknowledges.
 
-If all checks pass → proceed to Step 7.
+If all checks pass (including wiring scan) → proceed to Step 7.
 
 ### 6b: Fix Errors (Sonnet fix agent)
 
