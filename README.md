@@ -105,6 +105,7 @@ This reduces prompt size by 60-80% for focused tasks, saving tokens and keeping 
 | `/triage` | Audit tasks against the codebase, detect stale/obsolete work | Opus + Haiku |
 | `/ship` | Create PR, wait for CI, merge to main | Opus only |
 | `/learn` | Analyze project and suggest capability improvements | Opus + Haiku |
+| `/create-tasks` | Interview-driven task generation — thorough questioning then backlog creation | Opus only |
 | `/add-metiskill` | Add a custom project-specific skill | Opus only |
 
 ### Repo Management Skills (run in the metis repo)
@@ -247,6 +248,7 @@ metis/
 │       │   ├── triage/           # Backlog auditor
 │       │   ├── ship/             # PR + merge
 │       │   ├── learn/            # Analyze & suggest
+│       │   ├── create-tasks/     # Interview-driven task generation
 │       │   ├── add-metiskill/    # Custom skill creator
 │       │   ├── add-capability/   # Registry management
 │       │   ├── scaffold-skill/   # Core skill generator

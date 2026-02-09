@@ -1,10 +1,3 @@
----
-name: metis-manage
-description: Internal dogfooding tool for managing the metis plugin — promote skills, sync plugin, check status. Not for end users.
-argument-hint: [promote|demote|pull|sync|status|ship] <args>
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
----
-
 # Metis Manage — Dogfooding Tool
 
 You are executing the `/metis-manage` command. This is an internal tool for managing the metis plugin during development. It is NOT part of the shipped product.
@@ -15,8 +8,8 @@ Parse `$ARGUMENTS` and route to the appropriate action:
 
 | Command | Action |
 |---------|--------|
-| `promote <skill>` | Move a custom skill from `.metis/skills/` to `plugins/metis-core/skills/` (make it a core skill) |
-| `demote <skill>` | Copy a core skill from `plugins/metis-core/skills/` to `.metis/skills/` for experimentation |
+| `promote <skill>` | Move a custom skill from `.claude/commands/` to `plugins/metis-core/skills/` (make it a core plugin skill) |
+| `demote <skill>` | Copy a core skill from `plugins/metis-core/skills/` to `.claude/commands/` for experimentation |
 | `pull <url-or-path>` | Import a community capability from a git repo URL or local path into the registry |
 | `sync` | Reinstall the plugin to pick up local changes |
 | `status` | Show what's local vs plugin, what's changed |
@@ -27,47 +20,48 @@ Parse `$ARGUMENTS` and route to the appropriate action:
 
 ## `promote <skill>`
 
-Move a custom project skill into the core plugin so it ships to all users.
+Move a local command into the core plugin so it ships to all users.
 
 ### Steps
 
-1. Verify `.metis/skills/{skill}/SKILL.md` exists — abort if not found
+1. Verify `.claude/commands/{skill}.md` exists — abort if not found
 2. Verify `plugins/metis-core/skills/{skill}/` does NOT exist — abort with warning if it does (use `--force` to overwrite)
-3. Read the custom skill's SKILL.md
-4. Check it follows core skill conventions:
-   - Has YAML frontmatter (name, description, argument-hint, allowed-tools)
-   - Has a `## Bootstrap` section (for consumer skills) or explain why it's not needed
-   - Has a `<rules>` block
-   - Step numbering is consistent
-5. Create `plugins/metis-core/skills/{skill}/` and copy the SKILL.md
-6. Remove `.metis/skills/{skill}/` (the plugin version takes over)
+3. Read the command's markdown file
+4. Convert to core skill format:
+   - Add YAML frontmatter (name, description, argument-hint, allowed-tools)
+   - Ensure it has a `## Bootstrap` section (for consumer skills) or explain why it's not needed
+   - Ensure it has a `<rules>` block
+   - Ensure step numbering is consistent
+5. Create `plugins/metis-core/skills/{skill}/SKILL.md` with the converted content
+6. Remove `.claude/commands/{skill}.md` (the plugin version takes over)
 7. Report:
 
 ```
 PROMOTED: /{skill}
 ═══════════════════════════════════════════════════
 
-From: .metis/skills/{skill}/SKILL.md (local)
-To:   plugins/metis-core/skills/{skill}/SKILL.md (plugin)
+From: .claude/commands/{skill}.md (local command)
+To:   plugins/metis-core/skills/{skill}/SKILL.md (plugin skill)
 
 Still needed:
   • Add to README.md skills table
   • Add to plugins/metis-core/README.md
   • Run /metis-manage ship to publish
+  • Run /plugin install metis@metis to pick up the new skill
 
 ═══════════════════════════════════════════════════
 ```
 
 ## `demote <skill>`
 
-Copy a core skill to local for experimentation without modifying the plugin.
+Copy a core skill to a local command for experimentation without modifying the plugin.
 
 ### Steps
 
 1. Verify `plugins/metis-core/skills/{skill}/SKILL.md` exists
-2. Copy the entire skill directory to `.metis/skills/{skill}/`
-3. Note: the local version takes precedence when both exist (Claude Code checks `.metis/skills/` first)
-4. Report that the local copy is now active and the plugin version is shadowed
+2. Copy the SKILL.md content to `.claude/commands/{skill}.md`
+3. The local command will be available immediately as `/{skill}`
+4. Report that the local copy is now active
 
 ## `pull <url-or-path>`
 
@@ -157,29 +151,25 @@ Show the current state of skills across local and plugin.
 
 ### Steps
 
-1. Glob `plugins/metis-core/skills/*/SKILL.md` → list core skills
-2. Glob `.metis/skills/*/SKILL.md` → list local/custom skills
-3. Check for shadows (local skill with same name as core skill)
-4. Check for uncommitted changes in `plugins/metis-core/`:
+1. Glob `plugins/metis-core/skills/*/SKILL.md` → list core plugin skills
+2. Glob `.claude/commands/*.md` → list local commands
+3. Check for uncommitted changes in `plugins/metis-core/`:
    ```bash
    git status plugins/metis-core/ --short
    ```
-5. Report:
+4. Report:
 
 ```
 METIS STATUS
 ═══════════════════════════════════════════════════
 
-Core Skills (plugins/metis-core/skills/):
-  help  install  migrate  task  swarm  triage
-  ship  learn  add-metiskill  scaffold-skill
+Core Plugin Skills (plugins/metis-core/skills/):
+  help  install  migrate  task  swarm  triage  ship
+  learn  add-metiskill  create-tasks  scaffold-skill
   validate  add-capability  release
 
-Local Skills (.metis/skills/):
-  create-tasks  metis-manage
-
-Shadows (local overrides core):
-  (none)
+Local Commands (.claude/commands/):
+  metis-manage
 
 Uncommitted Plugin Changes:
   (none — or list of changed files)
@@ -205,7 +195,8 @@ Stage all metis-related changes, create a PR, and merge. A shortcut for the comm
    Use a short timestamp like `0209-1` for readability
 4. Stage all relevant files — be specific:
    - `plugins/metis-core/` changes
-   - `.metis/` changes (config, capabilities, skills — NOT agents.json/learnings.json/tasks/)
+   - `.metis/` changes (config, capabilities — NOT agents.json/learnings.json/tasks/)
+   - `.claude/commands/` changes
    - `README.md`, `CLAUDE.md` if changed
    - `.claude/settings.json` if changed
 5. Commit with message from args or auto-generate from changed files:
@@ -240,11 +231,11 @@ METIS MANAGE — Dogfooding Tool
 ═══════════════════════════════════════════════════
 
 Commands:
-  /metis-manage promote <skill>       Move local skill → core plugin
-  /metis-manage demote <skill>        Copy core skill → local for experiments
+  /metis-manage promote <skill>       Move local command → core plugin skill
+  /metis-manage demote <skill>        Copy core skill → local command
   /metis-manage pull <url-or-path>    Import community capability into registry
   /metis-manage sync                  Reinstall plugin after changes
-  /metis-manage status                Show local vs plugin skills
+  /metis-manage status                Show local vs plugin, uncommitted changes
   /metis-manage ship [message]        Stage, commit, PR, merge all changes
 
 ═══════════════════════════════════════════════════
@@ -253,8 +244,8 @@ Commands:
 ## Rules
 
 <rules>
-- This skill is for internal dogfooding ONLY — never promote this skill itself to the plugin
-- promote: always check conventions before promoting (frontmatter, rules block, bootstrap)
+- This command is for internal dogfooding ONLY — never promote it to the plugin
+- promote: convert .claude/commands/ markdown to proper SKILL.md format (add frontmatter, bootstrap, rules)
 - promote: always remind to update both READMEs after promoting
 - demote: never delete the core version — only copy to local
 - ship: never use git add -A — stage specific files
