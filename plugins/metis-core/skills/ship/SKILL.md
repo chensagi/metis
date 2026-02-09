@@ -93,6 +93,12 @@ git rebase origin/main
 
 If the rebase has conflicts, STOP. Show the user which files conflict and ask how to proceed. Do NOT force through conflicts.
 
+After resolving conflicts (or if the rebase was clean), scan for leftover conflict markers:
+```bash
+grep -rn '<<<<<<< ' src/ --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.json' --include='*.md' || echo "No conflict markers found"
+```
+If any `<<<<<<<`, `=======`, or `>>>>>>>` markers remain, fix them before pushing. These are easy to miss when resolving multi-commit rebases — one orphaned marker can break the build.
+
 Then push:
 ```bash
 git push -u origin HEAD
