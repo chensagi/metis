@@ -13,16 +13,35 @@ Create a PR for current changes, wait for CI checks to pass, and merge to main.
 - `$0` - Branch name (will be prefixed with `claude/`)
 - `$1` onwards - Commit message (short description of changes)
 
+<rules>
+- NEVER force-push or use --force
+- NEVER merge a PR with failing CI checks — STOP and show the user the failure details
+- NEVER use `git add .` or `git add -A` — always stage specific files by name
+- NEVER skip the CI wait step
+- ALWAYS use HEREDOC format for commit messages
+- ALWAYS include Co-Authored-By trailer in commits
+</rules>
+
 ## Workflow
 
 Execute these steps in order:
+
+### 0. Pre-check
+
+Verify the environment is ready:
+```bash
+git rev-parse --is-inside-work-tree
+which gh
+git remote get-url origin
+```
+If any of these fail, STOP and tell the user what's missing (not a git repo, `gh` CLI not installed, or no remote configured).
 
 ### 1. Check for changes
 ```bash
 git status
 git diff --stat
 ```
-If no changes, inform the user and stop.
+If no changes, tell the user "Nothing to ship — no uncommitted changes found." and STOP. Do NOT proceed.
 
 ### 2. Create feature branch
 ```bash
@@ -69,20 +88,29 @@ EOF
 ```bash
 gh pr checks <pr-number> --watch
 ```
-Wait for all checks to pass. If checks fail, inform the user.
+Wait for all checks to pass. If checks fail, STOP. Show the user the failing check names and details. Do NOT attempt to merge. Ask the user how to proceed.
 
-### 8. Merge the PR
+### 8. Report PR ready
+Show the PR URL and CI status. Then ask the user:
+
+Use `AskUserQuestion` with options:
+- "Merge now" — proceed to merge immediately
+- "Don't merge" — leave the PR open for manual review
+
+Do NOT merge unless the user explicitly chooses "Merge now".
+
+### 9. Merge the PR (only if user approved)
 ```bash
 gh pr merge <pr-number> --merge --delete-branch
 ```
 
-### 9. Sync local main
+### 10. Sync local main
 ```bash
-git checkout main && git fetch origin && git reset --hard origin/main
+git checkout main && git pull --ff-only origin main
 ```
 
-### 10. Report success
-Show the merged PR URL and confirm the changes are now on main.
+### 11. Report success
+Show the merged PR URL and confirm the changes are now on main. Suggest `/clear` to start a fresh conversation.
 
 ## Example Usage
 ```
