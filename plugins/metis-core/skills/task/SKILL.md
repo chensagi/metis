@@ -11,13 +11,11 @@ You are executing the `/task` command. Follow this workflow carefully.
 
 ## Bootstrap
 
-Before starting, ensure `.metis/` exists with a valid config:
-
-1. **If `.metis/config.json` exists** → Read it, load capabilities from `.metis/capabilities/`, proceed
-2. **If `.metis/` doesn't exist** → Tell the user to run `/install` first for full interactive setup. If they want to proceed immediately, do a minimal bootstrap:
-   - `mkdir -p .metis/capabilities .metis/skills .metis/tasks/todo .metis/tasks/doing .metis/tasks/done`
-   - Create `.metis/.gitignore` (hybrid tracking)
-   - Auto-detect project type and create minimal `.metis/config.json`
+<rules>
+BEFORE DOING ANYTHING ELSE, check if `.metis/config.json` exists:
+- **If it exists** → Read it, load capabilities from `.metis/capabilities/`, proceed
+- **If `.metis/` does not exist** → STOP. Tell the user: "Run `/install` first to set up Metis for this project." Do NOT proceed. Do NOT fall back to any other directory structure. Do NOT attempt to work without `.metis/`. This is a hard requirement — the skill cannot function without it.
+</rules>
 
 Read `.metis/capabilities/manifest.json` (if exists) and load capability instructions — these inform how you implement during Step 5.
 
@@ -125,6 +123,8 @@ Based on your exploration and research, design the implementation:
 
 ### 3d: Present the Plan
 
+The plan must be detailed enough for a Sonnet agent to implement without architectural thinking. Opus does MORE thinking upfront so Sonnet does LESS during implementation.
+
 **Normal Mode** — present the implementation plan:
 
 ```
@@ -133,12 +133,18 @@ IMPLEMENTATION PLAN — Task XX: Title
 
 Approach: [Brief description]
 
-Files to modify:
+Files to create/modify:
   - path/to/file.ts — [what changes]
+    - function signatures: [exact function names, params, return types]
+    - key logic: [what the implementation does, step by step]
   - path/to/new-file.ts — [what it does]
+    - exports: [exact exports with types]
 
 Patterns to follow:
-  - [existing pattern from codebase]
+  - [existing pattern from codebase — reference specific files]
+
+Research hints:
+  - [API docs to look up, library patterns to search for]
 
 Relevant capabilities: [typescript, react-native, ...]
 
@@ -158,22 +164,34 @@ Scope:
 
 Approach: [Brief description]
 
-Files to modify:
+Files to create/modify:
   - path/to/file.ts — [what changes]
+    - function signatures: [exact function names, params, return types]
+    - key logic: [what the implementation does, step by step]
 
 Edge Case Handling:
   - [failure scenario] → [strategy, from Round 2 answers]
 
 Architecture Notes:
-  - [integration points, patterns to follow, from Round 3]
+  - [integration points, patterns to follow — reference specific files, from Round 3]
 
 Test Plan:
   - [specific test cases, from Round 4 answers]
+
+Research hints:
+  - [API docs to look up, library patterns to search for]
 
 Relevant capabilities: [typescript, react-native, ...]
 Complexity: Medium
 ═══════════════════════════════════════════════════
 ```
+
+**What the plan MUST include** (both modes):
+- Exact file paths to create or modify
+- Function signatures and types (copy from codebase exploration in Step 3a)
+- Which capability instructions apply (for capability subsetting in Step 5)
+- Research hints for unfamiliar APIs or patterns
+- Explicit implementation details per file — not just "add auth" but "add middleware function that checks JWT token from Authorization header, returns 401 if invalid"
 
 Wait for user approval before proceeding. If the user suggests changes, adjust the plan.
 
@@ -185,44 +203,133 @@ Once the plan is approved:
 2. Update the `Status:` field in the file to `in-progress`
 3. Commit: `git commit -m "Start: <task title>"`
 
-## Step 5: Implement
+## Step 5: Implement (Sonnet Delegation)
 
-Do the implementation work:
+Opus has done the smart work (interview, explore, plan). Now delegate the "dumb work" — code writing — to a cheaper Sonnet agent.
 
-1. Read the project's `CLAUDE.md` (if it exists) for codebase conventions
-2. Follow the capability instructions loaded during bootstrap — but only inject **relevant capabilities** identified in the plan (capability subsetting). Skip capabilities that don't apply to the files being modified
-3. Follow the requirements and acceptance criteria exactly
-4. Use the technical details provided as guidance
-5. Apply any decisions from the clarifying questions and the approved plan
-6. Add a `## Log` section at the bottom of the task file with important decisions made
+### 5a: Build the Agent Prompt
 
-## Step 6: Verify
+Construct a focused prompt for the Sonnet agent using the approved plan from Step 3d:
 
-Run verification using `.metis/config.json` commands:
+1. **Plan** — the approved implementation plan (exact files, types, approach, implementation details per file)
+2. **Capability instructions** — read only the relevant capabilities identified in the plan (capability subsetting). Extract the `## Agent Instructions` section from each
+3. **Research hints** — from the plan (Step 3d) and any findings from Step 3b
+4. **CLAUDE.md** — read the project's `CLAUDE.md` (if it exists) for codebase conventions
+5. **Task file** — the full task spec from `.metis/tasks/doing/`
+6. **verify_command** — from `.metis/config.json` (may be null)
 
-1. **Verify command** (if configured): Run `verify_command` and ensure zero errors
-2. **Test command** (if configured): Run `test_command` — find and run matching tests for changed modules
-3. **Lint command** (if configured): Run `lint_command` on changed files
-4. Fix any errors before proceeding — do not move forward with failing checks
+### 5b: Spawn Sonnet Agent (foreground, blocking)
 
-If no commands are configured, warn the user that verification was skipped.
+<agent-prompt>
+Task({
+  description: "Implement task ${num}: ${name}",
+  prompt: `You are a task-filler agent. Implement the following plan exactly as specified.
 
-### Debugging (when errors occur)
+## Project Conventions
+${claudeMdContents}
 
-**80% — Web search solves it:**
-1. Take the exact error message from verify/test/lint output
-2. WebSearch: `"{error message}" {library} {version}`
-3. Check the results — Stack Overflow, GitHub issues, library docs
-4. Apply the fix and re-verify
+## Capability Instructions (relevant subset)
+${relevantCapabilityInstructions}
 
-**20% — Deep evidence collection:**
-When web search doesn't solve it:
-1. Collect the full error with stack trace
-2. Identify the exact file and line
-3. Read surrounding code and its dependencies
-4. Check recent changes: `git diff` and `git log` for the affected files
-5. Search the codebase for the same error pattern (is it elsewhere?)
-6. Present all evidence structured to the user — let them decide the next step
+## Research Hints
+${researchHints}
+
+When you encounter errors or unfamiliar APIs, use WebSearch to find solutions.
+Use WebFetch to read specific documentation pages.
+
+## Implementation Plan
+${approvedPlanFromStep3d}
+
+## Task Spec
+${taskFileContents}
+
+## Rules
+- Implement ALL files listed in the plan — do not skip any
+- Follow existing code patterns — read neighboring files to match style
+- Use exact types and interfaces from the plan
+- Be concise — don't explain what you're doing, just do it. Minimize reasoning output
+- Do NOT repeat the plan or requirements back. Just implement
+- ${verify_command ? 'End with ' + verify_command + ' returning ZERO errors. If there are errors, fix them before finishing' : 'No verify command configured — review your changes manually before finishing'}
+- When you encounter errors, use WebSearch to find solutions
+- Add a ## Log section at the bottom of the task file with important decisions made`,
+  subagent_type: "general-purpose",
+  model: "sonnet",
+  run_in_background: false,
+  max_turns: 30
+})
+</agent-prompt>
+
+### 5c: Complex Tasks (4+ files)
+
+If the approved plan targets 4 or more files, decompose into 2-3 sequential work items before spawning:
+
+1. **Types/interfaces first** — shared definitions that other files depend on
+2. **Core logic** — business logic, services, utilities
+3. **Integration/wiring** — routing, config, exports, tests
+
+Spawn each work item as a separate Sonnet agent (foreground, sequential — not parallel, since `/task` is interactive). Each agent gets only the relevant subset of the plan.
+
+> **Why sequential, not parallel?** `/task` is interactive and single-task. Parallel spawns would dump multiple result payloads into context at once. Sequential keeps context clean and lets each agent build on the previous one's output.
+
+## Step 6: Verify (L0 runs directly)
+
+After the Sonnet agent completes, L0 runs verification directly — no agent spawn needed.
+
+### 6a: Run Verification Commands
+
+Run each configured command from `.metis/config.json`, truncating output:
+
+1. **Verify command** (if configured): `${verify_command} 2>&1 | head -30` — zero errors required
+2. **Test command** (if configured): `${test_command} 2>&1 | head -30` — find and run matching tests
+3. **Lint command** (if configured): `${lint_command} 2>&1 | head -30` — check changed files
+4. **Spot-check**: Glob for key files listed in the plan to confirm they exist
+
+If no commands are configured, warn the user: "No verify/test/lint commands configured in .metis/config.json — verification skipped. Run `/install --update` to configure." Proceed only after the user acknowledges.
+
+If all checks pass → proceed to Step 7.
+
+### 6b: Fix Errors (Sonnet fix agent)
+
+If verification fails, do NOT fix code directly as Opus. Spawn a Sonnet fix agent:
+
+1. Capture the error output (already truncated to 30 lines from 6a)
+2. Identify which files have errors
+3. Spawn a Sonnet fix agent:
+
+<agent-prompt>
+Task({
+  description: "Fix errors in task ${num}: ${name}",
+  prompt: `You are a fix agent. The implementation has verification errors. Fix them.
+
+## Errors
+${errorOutput}
+
+## Files with errors
+${affectedFiles}
+
+## Research Hints
+- Search for: "${exactErrorMessage}" ${library} ${version}
+- Check: ${relevantDocs}
+
+## Rules
+- Fix ONLY the errors listed above — do not refactor or change unrelated code
+- Use WebSearch to find solutions for error messages
+- Be concise — just fix the code, don't explain
+- ${verify_command ? 'End with ' + verify_command + ' returning ZERO errors' : 'Review your changes manually'}`,
+  subagent_type: "general-purpose",
+  model: "sonnet",
+  run_in_background: false,
+  max_turns: 15
+})
+</agent-prompt>
+
+4. After the fix agent completes, re-run verification (Step 6a)
+5. If the fix agent fails too → **the 20% case**: present all evidence structured to the user:
+   - Full error with stack trace
+   - Affected files and lines
+   - What the fix agent tried
+   - Recent git changes (`git diff`)
+   - Let the user decide the next step
 
 ## Step 7: Complete the Task
 
@@ -244,10 +351,11 @@ Use the `/ship` skill to:
 - Wait for CI checks
 - Merge to main
 
----
+After shipping, suggest `/clear` to start a fresh conversation for the next task.
 
-**IMPORTANT REMINDERS:**
-- Never delete task files
-- Never modify the original spec (Summary, Requirements, Acceptance Criteria)
-- Only append to Log/Completed sections
-- Fix ALL verification issues before shipping
+<rules>
+- NEVER delete task files
+- NEVER modify the original spec (Summary, Requirements, Acceptance Criteria) — only append to Log/Completed sections
+- Fix ALL verification issues before shipping — do not proceed to Step 7 with failing checks
+- ALWAYS run Bootstrap first regardless of which step the user starts at
+</rules>

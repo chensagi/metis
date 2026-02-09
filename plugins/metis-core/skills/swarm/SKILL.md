@@ -19,24 +19,23 @@ It spawns Opus for thinking and Sonnet/Haiku for execution. The nesting constrai
 ```
 L0 (this skill, any model) — mechanical routing, file moves, agent tracking
   ↓ spawns (foreground, blocking)
-L1 Opus — decomposition, research direction, evaluation, judgment
+L1 Opus — decomposition, research direction, judgment
   ↓ returns structured decisions to L0
 L0 reads decisions
   ↓ spawns (background)
 L2 Sonnet/Haiku — implementation, web research, diagnostics
   ↓ returns results via TaskOutput
-L0 processes results
-  ↓ spawns Opus again (foreground) for evaluation
+L0 verifies directly (verify_command + Glob) — no evaluation spawn
 Loop
 ```
 
-**Key principle:** Opus THINKS (decomposition, research queries, evaluation criteria). Agents DO (code writing, web searching, diagnostics). Opus DECIDES (verification, commit/reject). L0 routes mechanically between them.
+**Key principle:** Opus THINKS (decomposition, research queries, work item design). Agents DO (code writing, web searching, diagnostics). L0 VERIFIES (verify_command, Glob spot-checks, commit/reject). L0 routes mechanically between them.
 
 ### How This Applies Across Skills
 
 | Skill | L0 (Dispatcher) | L1 Opus (Spine) | L2 Sonnet/Haiku (Leaves) |
 |-------|-----------------|-----------------|--------------------------|
-| `/swarm` | Route, track, file moves | Decompose, evaluate, judge | Implement work items, diagnose |
+| `/swarm` | Route, track, verify, file moves | Decompose, judge | Implement work items, diagnose |
 | `/triage` | Spawn agents, collect results | Synthesize report, assign status | Gather codebase evidence |
 | `/swarm test` | Spawn check agents | Correlate failures, root causes | Run compile/lint/test |
 | `/swarm integrate` | Coordinate fix cycle | Analyze issues, plan fixes | Fix errors, run checks |
@@ -44,14 +43,11 @@ Loop
 
 ## Bootstrap
 
-Before starting, ensure `.metis/` exists with a valid config:
-
-1. **If `.metis/config.json` exists** → Read it, proceed with existing config
-2. **If `.metis/` doesn't exist** → Tell the user to run `/install` first for full interactive setup. If they want to proceed immediately, do a minimal bootstrap:
-   - `mkdir -p .metis/capabilities .metis/skills .metis/tasks/todo .metis/tasks/doing .metis/tasks/done`
-   - Create `.metis/.gitignore` (hybrid — see install skill)
-   - Auto-detect project type and create minimal `.metis/config.json`
-   - Initialize `.metis/agents.json` as `{ "agents": [], "completed": [], "needs_review": [] }`
+<rules>
+BEFORE DOING ANYTHING ELSE, check if `.metis/config.json` exists:
+- **If it exists** → Read it, proceed with existing config
+- **If `.metis/` does not exist** → STOP. Tell the user: "Run `/install` first to set up Metis for this project." Do NOT proceed. Do NOT fall back to any other directory structure. Do NOT attempt to work without `.metis/`. This is a hard requirement — the skill cannot function without it.
+</rules>
 
 ### Loading Capabilities
 
@@ -117,9 +113,16 @@ while tasks remain:
 - User interrupts
 - **Cost budget**: If `--budget` was set and estimated cost exceeds it
 
+**When the loop exits**, display the final status and suggest `/clear` to start a fresh conversation — swarm sessions accumulate heavy context.
+
 **Priority within each iteration:**
 1. Fix incomplete tasks (highest priority)
 2. Then start new tasks
+
+**Context efficiency:**
+- When running verification commands during PROCESS, always truncate output: `${verify_command} 2>&1 | head -30`
+- Git commands: use `-q` flag where possible to suppress verbose output
+- Read `.metis/agents.json` ONCE at the start of each loop iteration. Work from that snapshot for all steps (AUDIT, PROCESS, FIX, FILL). Write it back ONCE at the end of the iteration after all updates. Do NOT re-read it between steps within the same iteration
 
 ### `/swarm status`
 
@@ -143,12 +146,12 @@ Start a specific task (e.g., `/swarm 40`).
 ### `/swarm --budget N`
 
 Run the continuous loop with an estimated cost ceiling of **$N**. Can combine with other commands.
-See [budget-tracking.md](budget-tracking.md) for the cost model and budget check algorithm.
+Read `budget-tracking.md` (same directory as this SKILL.md) for the cost model and budget check algorithm.
 
 ### `/swarm --controlled`
 
 Run the swarm in **controlled mode** — pauses for user approval at every decision point (task selection, decomposition, agent spawn, completion verdict, commit).
-See [controlled-mode.md](controlled-mode.md) for the full approval checkpoint flow.
+Read `controlled-mode.md` (same directory as this SKILL.md) for the full approval checkpoint flow.
 
 ### `/swarm stop`
 
@@ -156,17 +159,17 @@ Stop spawning new agents (running agents continue until done).
 
 ### `/swarm audit`
 
-Reconcile `.metis/agents.json` with actual agent state. Checks output files for completion/crash patterns, verifies files were created, runs completion lifecycle (file move, commit). See [audit-reference.md](audit-reference.md) for detailed heuristics and output format.
+Reconcile `.metis/agents.json` with actual agent state. Checks output files for completion/crash patterns, verifies files were created, runs completion lifecycle (file move, commit). Read `audit-reference.md` (same directory) for detailed heuristics and output format.
 
 ### `/swarm integrate`
 
 Run integration testing on recently completed tasks using a two-phase diagnose-then-fix approach.
-See [integration-flow.md](integration-flow.md) for the full workflow. The diagnostics agent uses [integration-checklist.md](integration-checklist.md).
+Read `integration-flow.md` (same directory) for the full workflow. The diagnostics agent uses `integration-checklist.md`.
 
 ### `/swarm test`
 
 Run a parallel test swarm that verifies current changes using static checks and tests (compile/type check, lint, unit tests).
-See [test-swarm.md](test-swarm.md) for agent configurations and scope detection.
+Read `test-swarm.md` (same directory) for agent configurations and scope detection.
 
 ---
 
@@ -217,9 +220,9 @@ Every task goes through a clear lifecycle reflected by its file location:
 After each task completion (file moved to `done/`), create a git commit:
 
 ```bash
-git add .metis/tasks/done/${filename} .metis/tasks/doing/ .metis/agents.json
-git add ${relevant_source_files}
-git commit -m "$(cat <<'EOF'
+git add -q .metis/tasks/done/${filename} .metis/tasks/doing/ .metis/agents.json
+git add -q ${relevant_source_files}
+git commit -q -m "$(cat <<'EOF'
 Task ${num}: ${name} — complete
 
 - Implemented ${brief_summary}
@@ -228,6 +231,7 @@ Task ${num}: ${name} — complete
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
+echo "Committed: Task ${num}"
 ```
 
 <rules>
@@ -281,6 +285,12 @@ ${taskFileContents}
 ## Project Capabilities Available
 ${allCapabilityNames}
 
+## Rules
+- DO NOT implement any code — only plan and decompose
+- DO NOT create or modify source files
+- DO NOT modify the task file
+- Return ONLY the structured JSON decomposition
+
 ## Return Format
 Return a JSON object with this structure:
 {
@@ -330,7 +340,9 @@ All web access MUST go through these tools.
 - If you need to import from a sibling module being built by another agent, create the import assuming it will exist
 - Follow existing code patterns in the codebase — read neighboring files to match style
 - Create ALL files listed in the work item requirements — do not skip any
-- You MUST end with ${verify_command} returning ZERO errors. If there are errors, fix them before finishing. This is a hard gate — do not finish with errors
+- Be concise — don't explain what you're doing, just do it. Minimize reasoning output
+- Do NOT repeat the plan or requirements back. Just implement
+- ${verify_command ? `You MUST end with ${verify_command} returning ZERO errors. If there are errors, fix them before finishing. This is a hard gate — do not finish with errors` : 'No verify command configured — review your changes manually before finishing'}
 
 ## Work Item for Task ${num} (${name})
 
@@ -368,32 +380,18 @@ Naming: use{Name}Store for the hook...
 
 This is injected directly into the prompt. See "Capability Subsetting" for the full selection process.
 
-**Step 4: L0 waits for completion, then spawns Opus for evaluation (foreground)**
+**Step 4: L0 verifies directly (no agent spawn)**
 
-After agents complete (via TaskOutput), L0 spawns Opus to evaluate:
+After agents complete (via TaskOutput), L0 verifies directly — no Opus evaluation spawn needed:
 
-```
-Task({
-  description: "Evaluate task ${num}: ${name}",
-  prompt: `Evaluate these agent results against the task spec. Run verification.
-Return verdict: pass/fail per work item, with reasons.
+1. Run `${verify_command} 2>&1 | head -30` — zero errors required. If `verify_command` is null, skip this step
+2. Spot-check that key files from the work item exist (use Glob)
+3. If **clean** → task passes, proceed to completion lifecycle (file move → agents.json update → git commit)
+4. If **errors** → task goes to `needs_review` with errors noted
 
-## Task Spec
-${taskFileContents}
+> **Why no evaluation agent?** Each Opus spawn adds ~5-10KB to context and costs ~$0.50-1.00. The orchestrator can run `verify_command` and Glob directly via Bash — cheaper and context-lighter than spawning an agent that does the same thing.
 
-## Agent Results
-${agentOutputs}
-
-## Verification
-Run ${verify_command} and report the result.
-Check that key files exist and match the spec.`,
-  subagent_type: "general-purpose",
-  model: "opus",
-  run_in_background: false
-})
-```
-
-**Step 5: L0 acts on verdict** — file moves, commits, or spawns fix agents for failures.
+**Step 5: L0 acts on result** — file moves, commits, or spawns fix agents for failures.
 
 **Step 6: Capture agent_task_id**
 
@@ -427,8 +425,8 @@ The fix agent then:
    - Structured evidence report returned to L0 for Opus to evaluate
 
 For detailed agent prompts and two-phase workflows:
-- **Fix incomplete tasks**: See [fix-flow.md](fix-flow.md)
-- **Integration testing**: See [integration-flow.md](integration-flow.md)
+- **Fix incomplete tasks**: Read `fix-flow.md` (same directory as this SKILL.md)
+- **Integration testing**: Read `integration-flow.md` (same directory as this SKILL.md)
 
 ---
 
@@ -584,15 +582,15 @@ On first run, if `.metis/agents.json` shows tasks as `completed` but their files
 
 ## Supporting Files
 
-Load these when the relevant subcommand is invoked:
+These files are in the same directory as this SKILL.md. **Read them using the Read tool** when the relevant subcommand is invoked:
 
-| File | Load when |
+| File (same directory as this SKILL.md) | Read when |
 |------|-----------|
-| [controlled-mode.md](controlled-mode.md) | `/swarm --controlled` |
-| [test-swarm.md](test-swarm.md) | `/swarm test` |
-| [fix-flow.md](fix-flow.md) | Processing `needs_review` tasks |
-| [integration-flow.md](integration-flow.md) | `/swarm integrate` |
-| [budget-tracking.md](budget-tracking.md) | `/swarm --budget N` |
-| [audit-reference.md](audit-reference.md) | `/swarm audit` |
-| [integration-checklist.md](integration-checklist.md) | Integration diagnostics agent |
-| [examples.md](examples.md) | First-time usage reference |
+| `controlled-mode.md` | `/swarm --controlled` |
+| `test-swarm.md` | `/swarm test` |
+| `fix-flow.md` | Processing `needs_review` tasks |
+| `integration-flow.md` | `/swarm integrate` |
+| `budget-tracking.md` | `/swarm --budget N` |
+| `audit-reference.md` | `/swarm audit` |
+| `integration-checklist.md` | Integration diagnostics agent |
+| `examples.md` | First-time usage reference |
