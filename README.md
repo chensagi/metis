@@ -188,7 +188,7 @@ Run this in a dedicated session for continuous processing.
 /migrate
 ```
 
-Supports migration from Cursor, GitHub Copilot, Windsurf, Aider, Continue, Roo Code, and Cline setups.
+Supports migration from Cursor, GitHub Copilot, Windsurf, Aider, Continue, Roo Code, and Cline setups, otherwise - just tell your metis. 
 
 ## Repository Layout
 
@@ -213,21 +213,6 @@ metis/
 ├── CLAUDE.md
 └── README.md
 ```
-
-## Versioning
-
-Metis versioning happens at three levels:
-
-- **Repository tags**: stable plugin snapshots (example: `v0.1.0`).
-- **Capability versions**: semver in capability frontmatter.
-- **Consumer manifests**: pinned installed versions in `.metis/capabilities/manifest.json`.
-
-## Roadmap
-
-- Local-model preprocessing for low-value repetitive work.
-- More community capabilities.
-- Smarter cross-project learning suggestions.
-- Better budget visualization and reporting.
 
 ## Contributing
 
