@@ -1,20 +1,106 @@
-# macOS
-.DS_Store
-._*
+# Security-focused .gitignore for a public repository.
+# Keep local state, credentials, and machine-specific artifacts out of git.
 
-# Editors
+# OS junk
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors / IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+*.orig
 
-# Node (for MCP servers or scripts)
-node_modules/
-package-lock.json
-
-# Claude Code local settings (personal, not shared)
-.claude/settings.local.json
-
-# Temporary files
-*.tmp
+# Logs / runtime temp
 *.log
+*.tmp
+*.temp
+*.pid
+*.seed
+*.stackdump
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts / caches
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.parcel-cache/
+.next/
+.nuxt/
+.svelte-kit/
+coverage/
+dist/
+build/
+tmp/
+temp/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Rust / Go common artifacts
+target/
+bin/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.envrc
+*.local
+*.secret
+*.secrets
+.npmrc
+.pypirc
+.netrc
+
+# Key and certificate material
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.csr
+*.der
+
+# Infra / local databases
+.terraform/
+*.tfstate
+*.tfstate.*
+*.sqlite
+*.db
+*.db-journal
+
+# Local tool state (keep shared config tracked)
+.claude/settings.local.json
+.claude/plugins/
+.claude-plugin/cache/
+.metis/agents.json
+.metis/learnings.json
+.metis/tasks/

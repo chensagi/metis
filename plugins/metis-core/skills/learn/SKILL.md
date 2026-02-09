@@ -13,7 +13,11 @@ You are executing the `/learn` command. This skill analyzes how the project is b
 
 ## Prerequisites
 
-`.metis/` must exist. If not, tell the user to run `/install` first.
+<rules>
+BEFORE DOING ANYTHING ELSE, check if `.metis/config.json` exists:
+- **If it exists** → Proceed
+- **If `.metis/` does not exist** → STOP. Tell the user: "Run `/install` first to set up Metis for this project." Do NOT proceed. Do NOT fall back to any other directory structure. Do NOT attempt to work without `.metis/`. This is a hard requirement — the skill cannot function without it.
+</rules>
 
 ## Modes
 
@@ -60,7 +64,7 @@ Run quick checks directly:
    - Repeated timeout or rate limit issues → suggest reducing max_agents
 
 4. **Capability version drift**: Compare installed versions against metis registry:
-   - Read the metis-core registry (from the plugin source)
+   - The plugin root is two levels up from this skill's base directory (`{base_directory}/../../`). Read the registry at `{plugin_root}/capabilities/registry.json`
    - Flag capabilities that have newer versions available
 
 ### Step 3: Present Quick Suggestions
@@ -91,6 +95,7 @@ Findings:
 ═══════════════════════════════════════════════════
 
 Apply suggestions? (will ask for each one individually)
+After applying, consider /clear to start fresh.
 ```
 
 ### Step 4: Apply Approved Suggestions
@@ -143,7 +148,13 @@ Collect:
     - Best practices for the project's technology combination
     Report raw findings only.
 
-Output everything you find in a structured report with raw data. Do not filter or analyze — the orchestrator will do that.`,
+Output everything you find in a structured report with raw data. Do not filter or analyze — the orchestrator will do that.
+
+## Rules
+- DO NOT modify any files — this is a read-only exploration
+- DO NOT create files outside .metis/
+- Write your findings as your final response — do not create separate output files
+- Stay within the project directory — do not explore system directories`,
   subagent_type: "Explore",
   model: "haiku",
   run_in_background: false,

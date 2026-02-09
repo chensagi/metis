@@ -35,11 +35,11 @@ Use `AskUserQuestion` to gather:
 
 ## Step 3: Read Reference Skills
 
-Based on the skill type, read 1-2 existing skills of the same type to match patterns:
+Based on the skill type, read 1-2 existing skills of the same type to match patterns. Skills are located at `plugins/metis-core/skills/{skill-name}/SKILL.md` (this skill runs in the metis repo):
 
-- **Consumer direct** → read `/task` and/or `/install`
-- **Consumer dispatcher** → read `/swarm` and/or `/triage`
-- **Repo management** → read `/add-capability` and/or `/validate`
+- **Consumer direct** → read `plugins/metis-core/skills/task/SKILL.md` and/or `plugins/metis-core/skills/install/SKILL.md`
+- **Consumer dispatcher** → read `plugins/metis-core/skills/swarm/SKILL.md` and/or `plugins/metis-core/skills/triage/SKILL.md`
+- **Repo management** → read `plugins/metis-core/skills/add-capability/SKILL.md` and/or `plugins/metis-core/skills/validate/SKILL.md`
 
 Identify the structural patterns: frontmatter fields, section ordering, rule patterns, agent prompt format.
 
@@ -83,13 +83,11 @@ TODO: Define the second step.
 ```markdown
 ## Bootstrap
 
-Before starting, ensure `.metis/` exists with a valid config:
-
-1. **If `.metis/config.json` exists** → Read it, load capabilities from `.metis/capabilities/`, proceed
-2. **If `.metis/` doesn't exist** → Tell the user to run `/install` first for full interactive setup. If they want to proceed immediately, do a minimal bootstrap:
-   - `mkdir -p .metis/capabilities .metis/skills .metis/tasks/todo .metis/tasks/doing .metis/tasks/done`
-   - Create `.metis/.gitignore` (hybrid tracking)
-   - Auto-detect project type and create minimal `.metis/config.json`
+<rules>
+BEFORE DOING ANYTHING ELSE, check if `.metis/config.json` exists:
+- **If it exists** → Read it, load capabilities from `.metis/capabilities/`, proceed
+- **If `.metis/` does not exist** → STOP. Tell the user: "Run `/install` first to set up Metis for this project." Do NOT proceed. Do NOT fall back to any other directory structure. Do NOT attempt to work without `.metis/`. This is a hard requirement — the skill cannot function without it.
+</rules>
 
 Read `.metis/capabilities/manifest.json` (if exists) and load capability instructions — these inform implementation.
 ```

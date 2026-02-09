@@ -9,6 +9,19 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 
 You are executing the `/install` command. This skill bootstraps or updates `.metis/` in the current project. It's idempotent — running it again detects existing setup and offers upgrades.
 
+## Locating Plugin Files
+
+The metis-core plugin files (profiles, capabilities, registry) are located relative to this skill's base directory. The base directory is provided in the system prompt as "Base directory for this skill: ..." — use it to compute paths:
+
+- **Plugin root:** `{base_directory}/../../` (two levels up from `skills/install/`)
+- **Profiles:** `{plugin_root}/profiles/{name}.json`
+- **Capabilities:** `{plugin_root}/capabilities/{name}/capability.md`
+- **Registry:** `{plugin_root}/capabilities/registry.json`
+
+<rules>
+ALWAYS use these resolved paths to read plugin files directly. NEVER search the filesystem, spawn Explore agents, or glob broadly for plugin files. You know exactly where they are.
+</rules>
+
 ## Detect Mode
 
 Check if `.metis/` already exists:
@@ -63,7 +76,7 @@ Scan the project root for signature files to determine the best profile:
 | `plugins/metis-core/capabilities/registry.json` | `metis-dev` |
 | None of the above | No profile — ask user to configure manually |
 
-Read the profile JSON from the metis-core `profiles/` directory to get default capabilities and settings.
+Read the profile JSON from `{plugin_root}/profiles/{profile_name}.json` to get default capabilities and settings.
 
 ### Step 2: Confirm Profile with User
 
@@ -170,7 +183,7 @@ tasks/
 
 ### Step 8: Copy Capability Files
 
-For each selected capability, copy its `capability.md` from the metis-core registry into `.metis/capabilities/`:
+For each selected capability, read its file from `{plugin_root}/capabilities/{name}/capability.md` and write it to `.metis/capabilities/{name}.md`:
 
 ```
 .metis/capabilities/
@@ -182,7 +195,7 @@ For each selected capability, copy its `capability.md` from the metis-core regis
 └── maestro.md
 ```
 
-Read each capability file from the metis-core `capabilities/{name}/capability.md` directory and write it to `.metis/capabilities/{name}.md`.
+Each capability source is at `{plugin_root}/capabilities/{name}/capability.md`.
 
 ### Step 9: Initialize State Files
 
@@ -202,6 +215,7 @@ Capabilities: typescript, react-native, expo, ios-simulator, maestro
 Config: .metis/config.json
 
 Next steps:
+  /clear           — Start a fresh conversation (recommended before your first task)
   /triage          — Audit your backlog
   /task            — Pick up a task
   /swarm           — Run parallel task execution
@@ -223,7 +237,7 @@ Read `.metis/config.json` and `.metis/capabilities/manifest.json` to understand 
 
 ### Step 2: Check for Updates
 
-Compare installed capability versions against the metis-core registry:
+Compare installed capability versions against the registry at `{plugin_root}/capabilities/registry.json`:
 
 ```
 METIS UPDATE CHECK

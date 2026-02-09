@@ -11,7 +11,11 @@ You are executing the `/add-metiskill` command. This skill scaffolds a new custo
 
 ## Prerequisites
 
-`.metis/` must exist. If not, tell the user to run `/install` first.
+<rules>
+BEFORE DOING ANYTHING ELSE, check if `.metis/config.json` exists:
+- **If it exists** → Proceed
+- **If `.metis/` does not exist** → STOP. Tell the user: "Run `/install` first to set up Metis for this project." Do NOT proceed. Do NOT fall back to any other directory structure. Do NOT attempt to work without `.metis/`. This is a hard requirement — the skill cannot function without it.
+</rules>
 
 ## Flow
 

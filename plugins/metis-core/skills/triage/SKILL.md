@@ -12,13 +12,11 @@ You are executing the `/triage` command. This skill analyzes every task in `.met
 
 ## Bootstrap
 
-Before starting, ensure `.metis/` exists with a valid config:
-
-1. **If `.metis/config.json` exists** → Read it, load capabilities from `.metis/capabilities/`, proceed
-2. **If `.metis/` doesn't exist** → Tell the user to run `/install` first for full interactive setup. If they want to proceed immediately, do a minimal bootstrap:
-   - `mkdir -p .metis/capabilities .metis/skills .metis/tasks/todo .metis/tasks/doing .metis/tasks/done`
-   - Create `.metis/.gitignore` (hybrid tracking)
-   - Auto-detect project type and create minimal `.metis/config.json`
+<rules>
+BEFORE DOING ANYTHING ELSE, check if `.metis/config.json` exists:
+- **If it exists** → Read it, load capabilities from `.metis/capabilities/`, proceed
+- **If `.metis/` does not exist** → STOP. Tell the user: "Run `/install` first to set up Metis for this project." Do NOT proceed. Do NOT fall back to any other directory structure. Do NOT attempt to work without `.metis/`. This is a hard requirement — the skill cannot function without it.
+</rules>
 
 Read `.metis/capabilities/manifest.json` (if exists) — capabilities inform how triage analyzes the codebase (e.g., knowing about Zustand means checking for store consistency).
 
@@ -31,6 +29,8 @@ Read `.metis/capabilities/manifest.json` (if exists) — capabilities inform how
 ---
 
 ## Commands
+
+**All commands run Bootstrap first** — there are no exceptions.
 
 ### `/triage` (default — full backlog audit)
 
@@ -170,9 +170,11 @@ Summary:
 Would you like me to apply the suggested changes?
 ```
 
+STOP here and wait for the user to approve, modify, or reject the suggestions. Do NOT apply any changes until the user explicitly approves.
+
 ### Step 5: Apply Changes (with user approval)
 
-After presenting the report, wait for the user to approve/modify suggestions. Then:
+After the user approves:
 
 **For REMOVE tasks:**
 ```bash
@@ -367,6 +369,8 @@ After all Haiku agents complete, YOU (the orchestrator, Opus) read all `.metis/t
 
 This separation ensures consistent judgment. Individual Haiku agents can't see the full backlog, so they can't detect cross-task conflicts or make accurate status calls. Only the spine has the full picture.
 
+5. **Clean up temporary files** — Delete the batch files after synthesis: `rm .metis/triage-batch-*.md`
+
 ---
 
 ## When to Run
@@ -383,3 +387,14 @@ This separation ensures consistent judgment. Individual Haiku agents can't see t
 1. **Can't know product intent** — The skill can tell you a feature is already implemented, but can't know if you want to redo it differently. It will suggest DONE but you can override.
 2. **Complexity estimates are rough** — Based on file count and scope, not actual implementation time.
 3. **No runtime testing** — Analysis is static (grep, file existence, type checking). It can't verify features actually work correctly.
+
+<rules>
+- Status assessments (DONE/PARTIAL/STALE/BLOCKED/READY/QUESTIONABLE) are assigned by Opus ONLY — never by Haiku leaf agents
+- NEVER apply triage changes without explicit user approval — always STOP and wait after presenting the report
+- NEVER delete task files — move them to done/ with a resolution note
+- When creating tasks, always check existing backlog for duplicates first
+- Clean up temporary triage batch files (.metis/triage-batch-*.md) after synthesis
+- ALL commands (/triage, /triage [number], /triage create) MUST run Bootstrap first
+</rules>
+
+After completing triage, suggest `/clear` to start a fresh conversation.

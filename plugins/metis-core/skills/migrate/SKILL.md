@@ -29,7 +29,9 @@ If `$ARGUMENTS` specifies a tool name, skip detection and focus on that tool.
 
 Report what was found. If nothing found, tell the user this works best when existing orchestrator configs are present — but can still set up Metis via deep interview alone.
 
-**Pre-check:** If `.metis/` already exists, tell the user to use `/install --update` instead and exit.
+<rules>
+**Pre-check:** If `.metis/` already exists, STOP. Tell the user: "Run `/install --update` instead — .metis/ already exists." Do NOT proceed with migration.
+</rules>
 
 ## Step 2: Read & Analyze Source Configuration
 
@@ -101,14 +103,26 @@ Based on interviews + source analysis:
 4. **Map file patterns → src_dirs** — convert source includes/excludes to Metis `src_dirs`
 5. **Determine ask_mode** — based on user's autonomy preference answer from Round 4
 
+## Locating Plugin Files
+
+The metis-core plugin files (profiles, capabilities, registry) are located relative to this skill's base directory. The base directory is provided in the system prompt as "Base directory for this skill: ..." — use it to compute paths:
+
+- **Plugin root:** `{base_directory}/../../` (two levels up from `skills/migrate/`)
+- **Profiles:** `{plugin_root}/profiles/{name}.json`
+- **Capabilities:** `{plugin_root}/capabilities/{name}/capability.md`
+- **Registry:** `{plugin_root}/capabilities/registry.json`
+
+<rules>
+ALWAYS use these resolved paths to read plugin files directly. NEVER search the filesystem or glob broadly for plugin files.
+</rules>
+
 ## Step 5: Create `.metis/` Directory
 
-Follow the same creation steps as `/install` (Steps 4-9):
 - Create directory structure: `mkdir -p .metis/capabilities .metis/skills .metis/tasks/todo .metis/tasks/doing .metis/tasks/done`
 - Create `.metis/.gitignore` (hybrid tracking)
 - Create `config.json` with migrated settings (including `ask_mode`)
 - Create `capabilities/manifest.json`
-- Copy capability files from registry
+- Copy capability files: read from `{plugin_root}/capabilities/{name}/capability.md`, write to `.metis/capabilities/{name}.md`
 - Initialize state files (`agents.json`, `learnings.json`)
 
 **Key difference from `/install`:** The `config.json` is pre-populated with answers from the interview, not just profile defaults.
@@ -169,6 +183,7 @@ Note: Your .cursorrules file was NOT deleted.
 Metis works alongside existing configs — remove it when ready.
 
 Next steps:
+  /clear            — Start a fresh conversation (recommended — this one has heavy context)
   /task             — Pick up a task (try --super-ask for thorough planning)
   /swarm            — Run parallel task execution
   /triage           — Audit your imported backlog
