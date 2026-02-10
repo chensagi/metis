@@ -178,7 +178,7 @@ After the user approves:
 
 **For REMOVE tasks:**
 ```bash
-git mv .metis/tasks/todo/${filename} .metis/tasks/done/${filename}
+mv .metis/tasks/todo/${filename} .metis/tasks/done/${filename}
 ```
 Add a note to the task file:
 ```markdown

@@ -103,7 +103,9 @@ while tasks remain:
   3. FIX      — If needs_review tasks exist, spawn fix agents first
   4. FILL     — Spawn agents for available tasks (hard cap: 4 TOTAL background agents — see "Agent Limit")
   5. BUDGET   — If --budget was set, check estimated cost. Exit if over budget
-  6. STATUS   — Display current swarm status
+  6. STATUS   — Display swarm status only when state changed this iteration
+               (agent completed, task moved, agent spawned, or error occurred).
+               Skip if nothing changed (just waiting)
   7. WAIT     — Block-wait on ONE running agent, then loop back to check all (see "Waiting for Agents")
   8. Go back to step 1
 </loop>
@@ -129,6 +131,9 @@ while tasks remain:
 - When running verification commands during PROCESS, always truncate output: `${verify_command} 2>&1 | head -30`
 - Git commands: use `-q` flag where possible to suppress verbose output
 - Read `.metis/agents.json` ONCE at the start of each loop iteration. Work from that snapshot for all steps (AUDIT, PROCESS, FIX, FILL). Write it back ONCE at the end of the iteration after all updates. Do NOT re-read it between steps within the same iteration
+- **TaskOutput is a completion signal only** — never analyze or reference agent output content. Use verify_command for pass/fail
+- **Skip status display** when nothing changed this iteration (no completions, no spawns, no errors)
+- **Do NOT re-read task specs** after agents complete — use the task title from agents.json for commit messages
 
 ### `/swarm status`
 
@@ -145,7 +150,7 @@ Show current status without spawning any agents.
 Start a specific task (e.g., `/swarm 40`).
 
 **Action:**
-1. Move task file: `git mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}`
+1. Move task file: `mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}`
 2. Spawn one background agent for that task (pointing to `.metis/tasks/doing/`)
 3. Track it in `.metis/agents.json`
 
@@ -189,7 +194,7 @@ Every task goes through a clear lifecycle reflected by its file location:
 ```
 
 ### When Spawning an Agent
-1. Move the task file: `git mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}`
+1. Move the task file: `mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}`
 2. Spawn the background agent (pointing to `.metis/tasks/doing/${filename}`)
 3. **Capture the `agent_task_id`** from the Task tool's response — needed for `TaskOutput` waiting
 4. Update `.metis/agents.json` with agent info including `agent_task_id`
@@ -208,25 +213,24 @@ Every task goes through a clear lifecycle reflected by its file location:
 > **Why no verification agent?** Each agent result adds to context. The orchestrator can run verification directly via Bash in one call — cheaper and context-lighter than spawning an agent that does the same thing.
 
 **If verification passes:**
-1. Move the task file: `git mv .metis/tasks/doing/${filename} .metis/tasks/done/${filename}`
+1. Move the task file: `mv .metis/tasks/doing/${filename} .metis/tasks/done/${filename}`
 2. Move entry from `agents` → `completed` in `.metis/agents.json`
-3. **Git commit** the completed task (see "Git Commits" below)
+3. **Git commit** the source code changes (see "Git Commits" below)
 
 ### When a Task Needs Review
 1. Task file stays in `.metis/tasks/doing/` (it's still being worked on)
 2. Move entry to `needs_review` in `.metis/agents.json`
 
 ### When a Fix Agent Completes a needs_review Task
-1. Move the task file: `git mv .metis/tasks/doing/${filename} .metis/tasks/done/${filename}`
+1. Move the task file: `mv .metis/tasks/doing/${filename} .metis/tasks/done/${filename}`
 2. Move entry from `needs_review` → `completed` in `.metis/agents.json`
-3. **Git commit**
+3. **Git commit** the source code changes
 
 ### Git Commits
 
 After each task completion (file moved to `done/`), create a git commit:
 
 ```bash
-git add -q .metis/tasks/done/${filename} .metis/tasks/doing/ .metis/agents.json
 git add -q ${relevant_source_files}
 git commit -q -m "$(cat <<'EOF'
 Task ${num}: ${name} — complete
@@ -242,7 +246,7 @@ echo "Committed: Task ${num}"
 
 <rules>
 - Commit each task individually (not batched) so git history is clean
-- Only stage files relevant to that task + the task file move + agents.json
+- Only stage source files relevant to that task
 - If multiple tasks complete at once (discovered during audit), commit each one separately in task-number order
 - Never force-push or amend previous commits
 </rules>
@@ -257,7 +261,7 @@ The swarm uses L0 as a mechanical dispatcher. L0 reads task files, spawns Opus f
 
 **Step 1: Move the task file**
 ```bash
-git mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}
+mv .metis/tasks/todo/${filename} .metis/tasks/doing/${filename}
 ```
 
 **Step 2: Spawn Opus for decomposition (foreground, blocking)**
@@ -300,7 +304,7 @@ ${allCapabilityNames}
 - DO NOT implement any code — only plan and decompose
 - DO NOT create or modify source files
 - DO NOT modify the task file
-- Return ONLY the structured JSON decomposition
+- Return ONLY the structured JSON decomposition — do NOT include explanation or reasoning text outside the JSON object
 
 ## Return Format
 Return a JSON object with this structure:
@@ -355,6 +359,7 @@ All web access MUST go through these tools.
 - Create ALL files listed in the work item requirements — do not skip any
 - Be concise — don't explain what you're doing, just do it. Minimize reasoning output
 - Do NOT repeat the plan or requirements back. Just implement
+- Your FINAL message must be a single short line: "Done: [N files created/modified]" or "Error: [brief description]". No summary, no file list, no explanation. Just the status line
 - ${verify_command ? `You MUST end with ${verify_command} returning ZERO errors. If there are errors, fix them before finishing. This is a hard gate — do not finish with errors` : 'No verify command configured — review your changes manually before finishing'}
 
 ## Work Item for Task ${num} (${name})
@@ -528,7 +533,10 @@ After spawning, save to `.metis/agents.json`. When a task is decomposed into mul
 This is the key mechanism that makes the swarm continuous. After spawning/filling slots:
 
 1. Collect `agent_task_id` values for all running agents in `.metis/agents.json`
-2. **Non-blocking sweep**: Call `TaskOutput(task_id=..., block=false)` on all running agents in parallel to check who's already done
+2. **Non-blocking sweep**: Call `TaskOutput(task_id=..., block=false)` on all running agents
+   in parallel to check who's already done.
+   **Optimization:** Only sweep after a block-wait returns (step 4-5) — skip the sweep on
+   first entry to WAIT if no block-wait has returned yet this iteration
 3. **Process any completions immediately** (one at a time — run verification, file move, commit for each before processing the next)
 4. **Block-wait on ONE agent**: If agents are still running, pick the oldest and call `TaskOutput(task_id=..., block=true, timeout=600000)` on just that one
 5. When it completes, process it, then return to step 2 (non-blocking sweep for any others that finished while we waited)
@@ -538,6 +546,16 @@ This is the key mechanism that makes the swarm continuous. After spawning/fillin
 
 <rules>
 Never call `TaskOutput(block=true)` on more than ONE agent at a time.
+</rules>
+
+<rules>
+**TaskOutput is a completion signal, not a data source.** When TaskOutput returns:
+- Do NOT read, summarize, or analyze the agent's output content
+- Do NOT quote or reference what the agent said
+- Proceed DIRECTLY to verification (verify_command + Glob spot-checks)
+- The verify_command result determines pass/fail — not the agent's self-report
+- If you need to understand what the agent did (e.g., for the git commit message),
+  read the task spec and the changed files — not the TaskOutput content
 </rules>
 
 ### Checking Progress (for `/swarm status` and audits)
@@ -586,8 +604,8 @@ On first run, if `.metis/agents.json` shows tasks as `completed` but their files
 
 1. For each task in `.metis/agents.json` `completed` array:
    - Check if the task file is in `.metis/tasks/todo/` or `.metis/tasks/doing/` (it should be in `.metis/tasks/done/`)
-   - If misplaced: `git mv` to `.metis/tasks/done/`
-2. Commit all reconciled moves in a single commit
+   - If misplaced: `mv` to `.metis/tasks/done/`
+2. Log what was reconciled
 3. This only needs to happen once — after reconciliation, the lifecycle management keeps everything in sync.
 
 ---
@@ -601,7 +619,7 @@ On first run, if `.metis/agents.json` shows tasks as `completed` but their files
 4. **Integration flow** — Only run one integration cycle at a time; wait for completion before starting new tasks
 5. **No nested agents** — Subagents can't spawn subagents. The orchestrator (you) must do all decomposition and spawning. This is why fix/integration use two-phase flows
 6. **TaskOutput timeout** — Max 10 minutes per wait cycle. Long-running agents get re-waited in the next iteration
-7. **Context accumulation** — Very long swarm sessions accumulate context. Auto-compaction handles this in most cases, but if the session becomes sluggish, restarting `/swarm` in a new conversation is always safe (state is in .metis/agents.json + filesystem)
+7. **Context accumulation** — Long swarm sessions accumulate context from TaskOutput results. L0 minimizes waste by treating TaskOutput as a completion signal only (never analyzing content), skipping status display when idle, and using verify_command as the authoritative check. The PreCompact hook preserves loop state if compaction triggers. If the session becomes sluggish, restarting `/swarm` in a new session is always safe (state is in .metis/agents.json + filesystem)
 8. **Budget is estimated** — Claude Code does not expose actual cost to skills. The `--budget` feature uses rough estimates. Always check actual spend with `/cost` after the session
 9. **Session isolation** — For long-running swarm sessions, use a dedicated conversation. The swarm loop is designed to run continuously — start it and let it work. Use `/swarm stop` to stop spawning, or close the session. All state persists in `.metis/agents.json` and the filesystem
 </rules>

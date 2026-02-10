@@ -57,6 +57,7 @@ Rules:
 - Stay focused on YOUR fix scope — don't touch files outside your scope
 - Follow existing code patterns in the codebase
 - You MUST end with ${verify_command} returning ZERO errors. This is a hard gate — do not finish with errors
+- Your FINAL message must be a single short line: "Done: [N files fixed]" or "Error: [brief description]". No summary, no explanation
 
 Fix work item for Task ${num} (${name}).
 
