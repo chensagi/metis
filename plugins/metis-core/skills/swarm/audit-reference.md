@@ -20,8 +20,8 @@ Background agents can finish or crash without delivering a notification (API err
       - Run `ls` or `Glob` on the expected paths
       - If no files found → move to `needs_review` instead with note "Marked complete but no files found"
    d. For tasks confirmed as `completed`, run the full completion lifecycle:
-      - Move task file: `git mv .metis/tasks/doing/${filename} .metis/tasks/done/${filename}`
-      - Git commit the task individually (see "Git Commits" in SKILL.md)
+      - Move task file: `mv .metis/tasks/doing/${filename} .metis/tasks/done/${filename}`
+      - Git commit the source code changes (see "Git Commits" in SKILL.md)
 3. Update `.metis/agents.json` with corrected statuses
 4. Display an audit report showing what changed
 

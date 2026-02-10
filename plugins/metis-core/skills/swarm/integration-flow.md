@@ -30,7 +30,7 @@ ${completedTasks.map(t => '- Task ' + t.task_id + ': ' + t.task_name).join('\\n'
 
 Also read the integration-checklist.md file (in the same directory as this skill) for the full checklist.
 
-Output format:
+Your FINAL message must follow this exact output format — no extra commentary:
 ## Compilation Errors
 [List each error with file:line and the error message]
 ## Missing Exports

@@ -27,7 +27,7 @@ Claude: Running audit...
 
 Task 13 completed!
   .metis/tasks/doing/13-*.md → .metis/tasks/done/
-  Committed: "Task 13: User Profile Endpoint — complete"
+  Committed source changes: "Task 13: User Profile Endpoint — complete"
 
 Task 12 needs review (2 compilation errors)
   Task file stays in .metis/tasks/doing/
@@ -45,7 +45,7 @@ User: /swarm
 Claude:
 Task 12 fixes verified — compiles clean!
   .metis/tasks/doing/12-*.md → .metis/tasks/done/
-  Committed: "Task 12: API Auth Middleware — complete"
+  Committed source changes: "Task 12: API Auth Middleware — complete"
 
 Spawning agents for ready tasks:
 - Task 15: Database Migrations → moved to doing/, Agent started
@@ -57,7 +57,7 @@ User: /swarm integrate
 
 Claude:
 Starting integration verification...
-3 tasks completed, committing each:
+3 tasks completed, committing source changes:
   "Task 14: Rate Limiting — complete"
   "Task 15: Database Migrations — complete"
   "Task 16: Error Handling — complete"
@@ -129,5 +129,5 @@ User: Accept
 
 Claude:
   .metis/tasks/doing/20-*.md → .metis/tasks/done/
-  Committed: "Task 20: Search Indexing — complete"
+  Committed source changes: "Task 20: Search Indexing — complete"
 ```

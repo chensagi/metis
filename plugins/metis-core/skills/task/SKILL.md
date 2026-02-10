@@ -208,9 +208,8 @@ Wait for user approval before proceeding. If the user suggests changes, adjust t
 
 Once the plan is approved:
 
-1. Move the file: `git mv .metis/tasks/todo/<filename> .metis/tasks/doing/<filename>`
+1. Move the file: `mv .metis/tasks/todo/<filename> .metis/tasks/doing/<filename>`
 2. Update the `Status:` field in the file to `in-progress`
-3. Commit: `git commit -m "Start: <task title>"`
 
 ## Step 5: Implement (Sonnet Delegation)
 
@@ -346,14 +345,13 @@ ${affectedFiles}
 
 After implementation and verification pass:
 
-1. Move the file: `git mv .metis/tasks/doing/<filename> .metis/tasks/done/<filename>`
+1. Move the file: `mv .metis/tasks/doing/<filename> .metis/tasks/done/<filename>`
 2. Update the `Status:` field to `done`
 3. Add a `## Completed` section with:
    - Date completed
    - Summary of what was shipped
    - Files changed
    - Any follow-up items
-4. Commit: `git commit -m "Done: <task title>"`
 
 ## Step 8: Ship It
 

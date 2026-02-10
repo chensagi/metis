@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f .metis/agents.json ]; then echo '## Active Metis Swarm State'; cat .metis/agents.json; fi"
+            "command": "if [ -f .metis/agents.json ]; then echo '## METIS SWARM — Post-Compaction Recovery'; echo ''; echo 'You are running /swarm. Context was auto-compacted.'; echo 'Your loop state is preserved below. Continue the swarm loop:'; echo '1. Read .metis/agents.json for current agent state'; echo '2. Check running agents with TaskOutput(block=false)'; echo '3. Process completions, spawn new agents, continue the loop'; echo '4. Re-read the swarm SKILL.md if you need the full loop spec'; echo ''; echo '## Current agents.json'; cat .metis/agents.json; echo ''; echo '## Tasks in doing/'; ls .metis/tasks/doing/ 2>/dev/null || echo '(none)'; echo '## Tasks in todo/'; ls .metis/tasks/todo/ 2>/dev/null || echo '(none)'; fi"
           }
         ]
       }
