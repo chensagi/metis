@@ -89,6 +89,8 @@ Based on the interview answers and codebase exploration, decompose the work into
 - **Testable** — has clear acceptance criteria
 - **Right-sized** — not so big it needs further decomposition, not so small it's trivial
 
+At this stage, produce titles, one-line summaries, priority, complexity, and dependencies for the overview table. Full details (Technical Details, Acceptance Criteria, problem/solution analysis) are fleshed out during the per-task discussion in Step 7 — don't over-invest in details before the user has a chance to reshape tasks.
+
 ### Task Ordering
 
 Number tasks in recommended execution order:
@@ -163,20 +165,55 @@ Dependencies: {dependency chain summary}
 ═══════════════════════════════════════════════════
 ```
 
-Use AskUserQuestion:
-- **Approve** — Write all task files
-- **Adjust** — Let me modify specific tasks before writing
-- **Redo** — Start over with different decomposition
+Use AskUserQuestion to ask what the user wants to do next:
+- **All look good — write them** — Skip Step 7 entirely and go straight to Step 8 (write files)
+- **Deep-dive into specific tasks** — User specifies which task numbers to discuss (via the "Other" free-text option or by naming them). Only those tasks enter the per-task discussion in Step 7. All other tasks are auto-approved as shown above.
+- **Redo the whole plan** — Start over with different decomposition
 
-## Step 7: Write Task Files
+## Step 7: Per-Task Discussion
 
-Once approved, write all task files to `.metis/tasks/todo/`:
+**Only for tasks the user selected for deep-dive.** For each selected task, in order:
 
-1. For each task, create `.metis/tasks/todo/XX-{slug}.md`
+### 1. Present the task in detail
+
+Show the user:
+- **The problem / root cause** — what's wrong today or what's missing
+- **Proposed solution** — specific approach, not just "fix it"
+- **Files touched** — specific paths from codebase exploration
+- **Risks or dependencies** — what could go wrong, what this depends on
+
+### 2. Have a real conversation
+
+This is a genuine discussion, not a formality:
+- Answer the user's questions about the task
+- If the user reveals new context that changes the task scope, **adapt the task** — update the problem statement, solution, files, and risks accordingly
+- Multiple conversation rounds per task are expected and fine
+- Don't rush to the approval prompt — let the discussion converge naturally
+
+### 3. When the discussion converges, ask for a decision
+
+Use AskUserQuestion with these options:
+- **Looks good, next task** — approve the task (as discussed) and move on
+- **Too risky, skip it** — remove this task from the plan entirely
+- **Split it smaller** — break this task into sub-tasks and discuss those individually
+- **Chat about this** — continue the conversation on this task (loop back to step 2)
+
+### 4. Move to the next selected task
+
+Repeat until all selected tasks have been reviewed. Then proceed to Step 8.
+
+## Step 8: Write Task Files
+
+After all deep-dive discussions are complete, present the final approved task list (deep-dived tasks as modified + auto-approved tasks unchanged, minus any skipped tasks).
+
+Write all task files to `.metis/tasks/todo/`:
+
+1. For each approved task, create `.metis/tasks/todo/XX-{slug}.md`
 2. Use the full task file format with all sections populated
 3. Include dependency notes in Technical Details where applicable
+4. Deep-dived tasks should reflect any changes from the discussion — not the original decomposition
 
-## Step 8: Report
+## Step 9: Report
 
 ```
 TASKS CREATED
@@ -209,4 +246,6 @@ What to do next:
 - Don't create tasks that duplicate what already exists in the backlog — check existing tasks first
 - If the user's request maps to a single task, that's fine — don't force decomposition into multiple tasks
 - Never modify existing task files — only create new ones
+- ALWAYS walk through each selected task individually with the user before writing files — present the detailed analysis, have a real conversation, and get per-task approval
+- During per-task discussion, if the user provides new context that changes the task scope, adapt the task accordingly — don't stick to the original decomposition rigidly
 </rules>
