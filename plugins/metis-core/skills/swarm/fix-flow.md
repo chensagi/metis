@@ -8,7 +8,7 @@ Spawn a cheap Haiku agent to collect current errors. Read `.metis/config.json` f
 
 <agent-prompt>
 Task({
-  description: "Diagnose Task ${num}: ${name}",
+  description: "[Haiku] Diagnose Task ${num}: ${name}",
   prompt: `You are a diagnostic agent. Your job is to run checks and produce a structured report. Do NOT fix anything — only report.
 
 Read the project's CLAUDE.md (if it exists) for codebase conventions.
@@ -48,7 +48,7 @@ When the diagnostics agent returns:
 
 <agent-prompt>
 Task({
-  description: "Fix Task ${num}: ${name} — ${fixDescription}",
+  description: "[Sonnet] Fix Task ${num}: ${name} — ${fixDescription}",
   prompt: `You are a task-filler agent. Fix the specific errors described below.
 
 Read the project's CLAUDE.md (if it exists) for codebase conventions.

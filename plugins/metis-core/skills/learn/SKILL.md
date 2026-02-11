@@ -129,7 +129,7 @@ Record applied suggestions in `.metis/learnings.json`:
 
 <agent-prompt>
 Task({
-  description: "Deep learn: gather project data",
+  description: "[Haiku] Deep learn: gather project data",
   prompt: `You are a data-gathering agent. Explore this project and collect structured information for analysis. Do NOT analyze or recommend — just gather and report facts.
 
 Collect:

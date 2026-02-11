@@ -117,12 +117,12 @@ Loop
 **Key principle:** Opus THINKS. Agents DO. Opus DECIDES.
 ```
 
-Also include an `<agent-prompt>` block template:
+Also include an `<agent-prompt>` block template. **Convention:** always prefix the `description` field with a `[Model]` tag matching the `model` field — e.g. `[Sonnet]`, `[Haiku]`, `[Opus]`. This makes the model tier visible in Claude Code's agent display.
 
 ```markdown
 <agent-prompt>
 Task({
-  description: "{name} — {work item description}",
+  description: "[Sonnet] {name} — {work item description}",
   prompt: `You are a {role} agent.
 
 ## Project Context

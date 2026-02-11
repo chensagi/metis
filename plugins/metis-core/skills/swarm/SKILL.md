@@ -270,7 +270,7 @@ L0 sends the task spec + codebase context to Opus, which explores, thinks, and r
 
 ```
 Task({
-  description: "Decompose task ${num}: ${name}",
+  description: "[Opus] Decompose task ${num}: ${name}",
   prompt: `You are the Metis orchestrator. Read this task spec and decompose it into work items.
 
 ## Task Spec
@@ -334,7 +334,7 @@ L0 parses the work items from Opus's response and spawns Sonnet/Haiku agents for
 
 <agent-prompt>
 Task({
-  description: "Task ${num}: ${name} — ${workItemDescription}",
+  description: "[Sonnet] Task ${num}: ${name} — ${workItemDescription}",
   prompt: `You are a task-filler agent. You receive a focused work item describing specific files to create or modify.
 
 ## Project Context

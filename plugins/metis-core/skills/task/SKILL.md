@@ -230,7 +230,7 @@ Construct a focused prompt for the Sonnet agent using the approved plan from Ste
 
 <agent-prompt>
 Task({
-  description: "Implement task ${num}: ${name}",
+  description: "[Sonnet] Implement task ${num}: ${name}",
   prompt: `You are a task-filler agent. Implement the following plan exactly as specified.
 
 ## Project Conventions
@@ -308,7 +308,7 @@ If verification fails, do NOT fix code directly as Opus. Spawn a Sonnet fix agen
 
 <agent-prompt>
 Task({
-  description: "Fix errors in task ${num}: ${name}",
+  description: "[Sonnet] Fix errors in task ${num}: ${name}",
   prompt: `You are a fix agent. The implementation has verification errors. Fix them.
 
 ## Errors

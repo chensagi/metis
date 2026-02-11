@@ -310,7 +310,7 @@ Spawn up to 3 Haiku agents in parallel, each gathering raw evidence for a batch 
 
 ```
 Task({
-  description: "Gather evidence for tasks ${startNum}-${endNum}",
+  description: "[Haiku] Gather evidence for tasks ${startNum}-${endNum}",
   prompt: `You are a data-gathering agent. Your job is to collect RAW EVIDENCE about each task — nothing more.
 
 Read the project's CLAUDE.md (if it exists) for codebase conventions.
