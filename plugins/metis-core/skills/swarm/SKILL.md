@@ -101,7 +101,7 @@ while tasks remain:
   1. AUDIT    — Check running agents for completions (non-blocking)
   2. PROCESS  — For each completed agent (one at a time): verify → file move → commit
   3. FIX      — If needs_review tasks exist, spawn fix agents first
-  4. FILL     — Spawn agents for available tasks (hard cap: 4 TOTAL background agents — see "Agent Limit")
+  4. FILL     — Spawn agents for available tasks (dependency-aware — see "Dependency Resolution"; hard cap: 4 TOTAL background agents — see "Agent Limit")
   5. BUDGET   — If --budget was set, check estimated cost. Exit if over budget
   6. STATUS   — Display swarm status only when state changed this iteration
                (agent completed, task moved, agent spawned, or error occurred).
@@ -253,6 +253,31 @@ echo "Committed: Task ${num}"
 
 ---
 
+## Dependency Resolution
+
+During the FILL step, the swarm must respect task dependencies. Before spawning an agent for a task:
+
+1. Read the task file and check its `Blocked by:` field
+2. If `Blocked by:` lists task numbers (e.g., "01, 03"), check if ALL those tasks are in `.metis/tasks/done/`
+3. If any blocker is still in `todo/` or `doing/` → **skip this task**, move to the next available one
+4. If `Blocked by:` is "none" or the field is absent → task is available
+
+**Available tasks** for the FILL step are those in `.metis/tasks/todo/` where:
+- `Blocked by:` is "none", absent, or all referenced tasks are in `done/`
+- No file conflicts with currently running agents
+- Not already assigned to a running agent
+
+When no available tasks remain but there are still blocked tasks in `todo/`, display:
+```
+WAITING — N tasks blocked:
+  Task XX: blocked by Task YY (in doing/)
+  Task ZZ: blocked by Task XX (in todo/)
+```
+
+This prevents the swarm from implementing features whose foundations don't exist yet, avoiding cascading errors and wasted tokens.
+
+---
+
 ## Spawning Agents
 
 ### Standard Task — Dispatcher Pattern
@@ -270,32 +295,36 @@ L0 sends the task spec + codebase context to Opus, which explores, thinks, and r
 
 ```
 Task({
-  description: "Decompose task ${num}: ${name}",
+  description: "[Opus] Decompose task ${num}: ${name}",
   prompt: `You are the Metis orchestrator. Read this task spec and decompose it into work items.
 
 ## Task Spec
 ${taskFileContents}
 
 ## Instructions
-1. Read the full task spec carefully
+1. Read the full task spec carefully — pay special attention to "Scope Boundaries", "Key Files", and "Blocked by" fields
 2. Explore the codebase area: grep for key names, glob for target dirs, read neighboring files
 3. Consider if web research would improve the plan — search for relevant docs/patterns if so
-4. Break into 1-3 focused work items. Each work item must:
+4. If the task has a "Scope Boundaries" section, PASS THROUGH the "NOT in scope" and "Files NOT to modify" constraints into each work item's rules
+5. Break into 1-3 focused work items. Each work item must:
    - Target specific files
    - Include exact interfaces/types to export (from task spec)
    - Be independent enough to implement without other work items existing yet
 5. For each work item, generate research hints: what APIs/libraries/docs the agent should look up
 6. Select relevant capabilities per work item (capability subsetting)
-7. Identify wiring requirements: what existing files need to be updated to connect the new code
-   (route registration, barrel exports, navigation config, DI container, app initialization, etc.)
-   Include these as explicit steps in the last work item
+7. For each work item, define machine-verifiable wiring_checks: for each file the work item creates,
+   specify which existing file must reference it, the grep pattern that proves the connection,
+   and the exact action the agent should take. Every non-standalone file must have at least one wiring_check.
+   Use flexible regex patterns (e.g. `from.*['\"].*moduleName['\"]` not exact import strings).
+   Standalone files (tests, scripts, config) should have zero wiring_checks
 
 ## Decomposition Strategy
-- Types/interfaces first → core logic → integration/wiring
-- Simple tasks (<=3 files): single work item
-- Complex tasks (4+ files): 2-3 work items
-- The LAST work item must include wiring: updating existing files to import/register/connect new modules
-- If only 1 work item: it must include wiring steps, not just file creation
+- **Vertical slices**: each work item creates files AND wires them into the project
+- Simple tasks (<=3 files): single work item with all wiring
+- Complex tasks (4+ files): 2-3 work items, each a self-contained slice that wires its own files
+- Types/interfaces can be a separate first work item (consumed by later items, no wiring needed)
+- NEVER create a work item that only creates files without wiring them
+- Each work item's `wiring_checks` must cover: barrel exports, route registration, config entries, navigation — whatever applies to the files it creates
 
 ## Project Capabilities Available
 ${allCapabilityNames}
@@ -317,11 +346,32 @@ Return a JSON object with this structure:
       "research_hints": ["Search for X API docs", "Check Y library version"],
       "types": "interfaces/types to use",
       "details": "implementation specifics",
-      "wiring": ["Add import to src/app/routes.ts", "Export from src/services/index.ts"],
+      "scope_boundaries": {
+        "not_in_scope": ["items from task spec Scope Boundaries, if any"],
+        "files_not_to_modify": ["files from task spec, if any"]
+      },
+      "wiring_checks": [
+        {
+          "target_file": "src/routes/index.ts",
+          "grep_pattern": "from.*['\"].*moduleName['\"]",
+          "action": "Add: import { handler } from '../handlers/moduleName'",
+          "description": "handler imported in route file"
+        },
+        {
+          "target_file": "src/handlers/index.ts",
+          "grep_pattern": "export.*from.*['\"].*moduleName['\"]",
+          "action": "Add: export { handler } from './moduleName'",
+          "description": "handler exported from barrel"
+        }
+      ],
       "model": "sonnet"
     }
   ]
-}`,
+}
+
+Each `wiring_check` is mechanically verified by L0 after the agent finishes:
+`grep -q "${grep_pattern}" "${target_file}"` — if it fails, the work item is rejected.
+Use flexible regex patterns that tolerate whitespace and quote style variations.`,
   subagent_type: "general-purpose",
   model: "opus",
   run_in_background: false
@@ -334,7 +384,7 @@ L0 parses the work items from Opus's response and spawns Sonnet/Haiku agents for
 
 <agent-prompt>
 Task({
-  description: "Task ${num}: ${name} — ${workItemDescription}",
+  description: "[Sonnet] Task ${num}: ${name} — ${workItemDescription}",
   prompt: `You are a task-filler agent. You receive a focused work item describing specific files to create or modify.
 
 ## Project Context
@@ -350,12 +400,22 @@ When you encounter errors or unfamiliar APIs, use WebSearch to find solutions.
 Use WebFetch to read specific documentation pages.
 All web access MUST go through these tools.
 
+## Scope Boundaries (from task spec)
+${scopeBoundaries || 'No explicit scope boundaries for this work item.'}
+
+NOT IN SCOPE — do NOT implement these, even if they seem related:
+${notInScope || 'N/A'}
+
+FILES NOT TO MODIFY — do NOT touch these files:
+${filesNotToModify || 'N/A'}
+
 ## Rules
 - Stay focused on YOUR work item — don't implement files outside your scope
+- RESPECT SCOPE BOUNDARIES — if listed above, treat "NOT in scope" and "Files NOT to modify" as hard constraints
 - If shared types are provided, use them exactly as given
 - If you need to import from a sibling module being built by another agent, create the import assuming it will exist
 - Follow existing code patterns in the codebase — read neighboring files to match style
-- Wire your code into the project — don't just create files. Update existing files to import, register, and connect your new modules. Check: barrel exports (index.ts), route registration, navigation config, app initialization. If the work item includes a "wiring" section, follow it exactly
+- Wire your code into the project — don't just create files. Your work item includes "wiring_checks" with exact verification criteria. For each check, the orchestrator will run: grep -q '${grep_pattern}' ${target_file}. If that grep fails, your task will be REJECTED. Treat wiring_checks as hard requirements, not suggestions
 - Create ALL files listed in the work item requirements — do not skip any
 - Be concise — don't explain what you're doing, just do it. Minimize reasoning output
 - Do NOT repeat the plan or requirements back. Just implement
@@ -373,7 +433,13 @@ ${exactFilesToCreate}
 ${copyRelevantInterfacesFromTaskSpec}
 
 ### Implementation details
-${specificLogicForTheseFiles}`,
+${specificLogicForTheseFiles}
+
+### Wiring Checks (WILL BE MECHANICALLY VERIFIED)
+${formattedWiringChecks}
+
+After you finish, the orchestrator runs each grep_pattern against each target_file.
+ANY failing check = rejection. Complete ALL wiring checks.`,
   subagent_type: "general-purpose",
   model: "sonnet",
   run_in_background: true,
@@ -404,23 +470,34 @@ After agents complete (via TaskOutput), L0 verifies directly — no Opus evaluat
 
 1. Run `${verify_command} 2>&1 | head -30` — zero errors required. If `verify_command` is null, skip this step
 2. Spot-check that key files from the work item exist (use Glob)
-3. **Wiring scan** — check that new files are actually connected to the project:
+3. **Wiring verification** — for each `wiring_check` from the work item's decomposition:
    ```bash
-   # Find new files from this task's agent
-   new_files=$(git diff --name-only HEAD~1 -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null)
-   # For each new file, check if it's imported anywhere
-   for f in $new_files; do
-     base=$(basename "$f" | sed 's/\.[^.]*$//')
-     if ! grep -r "from.*['\"].*${base}['\"]" src/ --include='*.ts' --include='*.tsx' -q 2>/dev/null; then
-       echo "WARNING: $f is not imported anywhere"
+   wiring_failures=0
+   for each wiring_check in work_item.wiring_checks:
+     if ! grep -q "${wiring_check.grep_pattern}" "${wiring_check.target_file}" 2>/dev/null; then
+       echo "WIRING FAILED: ${wiring_check.description}"
+       echo "  Expected pattern '${wiring_check.grep_pattern}' in ${wiring_check.target_file}"
+       wiring_failures+=1
      fi
    done
    ```
-   - Files not imported anywhere → flag as potential wiring issue (task goes to `needs_review`)
-   - Ignore test files, entry points (index.ts, App.tsx), and config files
-   - This is a heuristic — false positives are OK (fix agent will sort them out)
-4. If **clean** → task passes, proceed to completion lifecycle (file move → agents.json update → git commit)
-5. If **errors** → task goes to `needs_review` with errors noted
+   - ANY wiring check failure → task goes to `needs_review` with the specific failures listed
+   - The fix agent prompt includes the exact failed checks so it knows precisely what to add
+4. **Fallback heuristic** — for files NOT covered by explicit wiring_checks, run as WARNING only (does not block):
+   ```bash
+   new_files=$(git diff --name-only HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null)
+   for f in $new_files; do
+     base=$(basename "$f" | sed 's/\.[^.]*$//')
+     # Skip if this file is already covered by a wiring_check target
+     # Skip test files, entry points (index.ts, App.tsx), config files
+     if ! grep -r "from.*['\"].*${base}['\"]" src/ --include='*.ts' --include='*.tsx' -q 2>/dev/null; then
+       echo "WARNING: $f has no wiring_check and is not imported anywhere (heuristic)"
+     fi
+   done
+   ```
+   Heuristic warnings go into the commit message but do NOT block completion.
+5. If **clean** (zero wiring_check failures) → task passes, proceed to completion lifecycle (file move → agents.json update → git commit)
+6. If **wiring_check failures** → task goes to `needs_review` with specific failed checks noted
 
 > **Why no evaluation agent?** Each Opus spawn adds ~5-10KB to context and costs ~$0.50-1.00. The orchestrator can run `verify_command` and Glob directly via Bash — cheaper and context-lighter than spawning an agent that does the same thing.
 
@@ -430,10 +507,10 @@ After agents complete (via TaskOutput), L0 verifies directly — no Opus evaluat
 
 The Task tool response includes a task ID when `run_in_background: true`. Store this as `agent_task_id` in `.metis/agents.json` — it's required for `TaskOutput` to wait on the agent in the WAIT step.
 
-**Example decomposition** for a task with 6 files:
-- Work item 1: "Create types and constants" (shared definitions)
-- Work item 2: "Create core service logic and utilities" (business logic)
-- Work item 3: "Create integration layer and wire up" (routing, config, exports)
+**Example decomposition** for a task with 6 files (vertical slices):
+- Work item 1: "Create types and constants" (shared definitions — no wiring_checks needed, consumed by later items)
+- Work item 2: "Create order service + wire into service layer" (creates service file, wiring_checks: barrel export in services/index.ts, registration in app.ts)
+- Work item 3: "Create order routes + wire into router" (creates route handler, wiring_checks: import in routes/index.ts, route registration)
 
 Each agent gets `max_turns: 30` (focused scope needs fewer turns than a full task).
 
@@ -445,8 +522,15 @@ When a task goes to `needs_review`, the fix flow starts with web research:
 
 Before spawning a fix agent, the dispatcher:
 1. Extracts exact error messages from the failed agent's output
-2. Spawns Opus (foreground) to analyze errors and design search queries
-3. Includes those queries as research hints in the fix agent's prompt
+2. Collects any failed wiring_checks (with target_file, grep_pattern, action, description)
+3. Spawns Opus (foreground) to analyze errors and design search queries
+4. Includes those queries as research hints in the fix agent's prompt
+5. If wiring checks failed, includes them in the fix agent prompt as:
+   ```
+   ## Failed Wiring Checks
+   - [ ] ${description}: grep '${grep_pattern}' in ${target_file} — MISSING
+         Action needed: ${action}
+   ```
 
 The fix agent then:
 1. Searches the web FIRST for each error (`WebSearch` with error message + library name)
@@ -567,6 +651,14 @@ When NOT in the continuous loop (e.g., `/swarm status`), check agents the old wa
 
 ### Status Display
 
+**Before rendering status**, try to read OTEL metrics for real cost data:
+
+```bash
+curl -s http://localhost:8888/metrics 2>/dev/null | grep -E '^claude_code_(cost|token)_usage_total'
+```
+
+If the endpoint responds, parse the Prometheus text format to extract per-model costs and token counts. If the endpoint is unavailable (OTEL not configured or Claude Code not restarted), fall back to the existing estimation display.
+
 ```
 METIS SWARM STATUS
 =================================================
@@ -592,9 +684,17 @@ INTEGRATION
    Last run: 10 minutes ago
    Status: PASSED (verified Tasks 12, 13)
 
+COST (actual via OTEL)
+   Opus:    $0.75  (6,200 tokens)
+   Sonnet:  $1.50  (15,000 tokens)
+   Haiku:   $0.02  (2,000 tokens)
+   Total:   $2.27
+
 =================================================
 Waiting for agents to complete...
 ```
+
+When OTEL is not available, omit the COST section entirely (budget estimates are shown separately if `--budget` is active).
 
 ---
 
@@ -620,7 +720,7 @@ On first run, if `.metis/agents.json` shows tasks as `completed` but their files
 5. **No nested agents** — Subagents can't spawn subagents. The orchestrator (you) must do all decomposition and spawning. This is why fix/integration use two-phase flows
 6. **TaskOutput timeout** — Max 10 minutes per wait cycle. Long-running agents get re-waited in the next iteration
 7. **Context accumulation** — Long swarm sessions accumulate context from TaskOutput results. L0 minimizes waste by treating TaskOutput as a completion signal only (never analyzing content), skipping status display when idle, and using verify_command as the authoritative check. The PreCompact hook preserves loop state if compaction triggers. If the session becomes sluggish, restarting `/swarm` in a new session is always safe (state is in .metis/agents.json + filesystem)
-8. **Budget is estimated** — Claude Code does not expose actual cost to skills. The `--budget` feature uses rough estimates. Always check actual spend with `/cost` after the session
+8. **Budget is estimated unless OTEL is enabled** — By default, the `--budget` feature uses rough estimates. When OTEL is configured (see `/install`), actual cost data from `http://localhost:8888/metrics` is used instead. See `budget-tracking.md` for details
 9. **Session isolation** — For long-running swarm sessions, use a dedicated conversation. The swarm loop is designed to run continuously — start it and let it work. Use `/swarm stop` to stop spawning, or close the session. All state persists in `.metis/agents.json` and the filesystem
 </rules>
 

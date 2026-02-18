@@ -22,6 +22,22 @@
     "lint_command": "npx eslint",
     "src_dirs": ["src/", "app/"]
   },
+  "makefile_targets": {
+    "dev": { "command": "npx expo start", "description": "Start Expo dev server" },
+    "ios": { "command": "npx expo run:ios", "description": "Run on iOS simulator" },
+    "android": { "command": "npx expo run:android", "description": "Run on Android emulator" },
+    "prebuild": { "command": "npx expo prebuild", "description": "Generate native projects" },
+    "prebuild-clean": { "command": "npx expo prebuild --clean", "description": "Clean and regenerate native projects" },
+    "test": { "command": "npm test", "description": "Run test suite" },
+    "typecheck": { "command": "npx tsc --noEmit", "description": "Type check without emitting" },
+    "lint": { "command": "npx eslint src/", "description": "Lint source files" },
+    "format": { "command": "npx prettier --write \"src/**/*.{ts,tsx}\"", "description": "Format source files" },
+    "check": { "command": "make typecheck && make lint && make test", "description": "Run all quality gates", "deps": ["typecheck", "lint", "test"] },
+    "clean": { "command": "rm -rf node_modules/.cache", "description": "Clean build caches" },
+    "nuke": { "command": "rm -rf node_modules ios android .expo && npm install", "description": "Full clean reinstall" },
+    "pod-install": { "command": "cd ios && bundle exec pod install", "description": "Install CocoaPods" },
+    "install": { "command": "npm install", "description": "Install dependencies" }
+  },
   "questions": [
     {
       "key": "bundle_id",

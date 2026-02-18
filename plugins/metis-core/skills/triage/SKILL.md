@@ -89,6 +89,7 @@ For each task, the analysis must determine:
 2. **Conflicts** — has the architecture changed in ways that make the task's approach outdated?
 3. **Feasibility** — are the dependencies/libraries/APIs the task assumes still available?
 4. **Cross-task dependencies** — does this task overlap with or depend on other tasks?
+5. **Dependency consistency** — if the task has `Blocked by:` fields, verify those tasks exist and are in the expected state. Flag broken chains (referencing deleted/nonexistent tasks) or circular dependencies
 
 **Status assessments** (assigned by Opus only — never by leaf agents):
 
@@ -195,32 +196,76 @@ Rewrite the task file with the new approach (preserving the original summary/int
 
 ### Step 6: Generate/Update `.metis/tasks/project.md`
 
-After triage decisions are applied, create or update `.metis/tasks/project.md`:
+After triage decisions are applied, create or update `.metis/tasks/project.md`.
+
+**Preservation rule:** If `project.md` already exists, preserve the **Vision** and **Architecture Notes** sections — these contain user-authored context. Regenerate all other sections from current task state.
 
 ```markdown
 # {project_name} — Project Plan
 
-*Last triaged: YYYY-MM-DD*
+*Last updated: YYYY-MM-DD*
 *Tasks: X todo / Y doing / Z done*
+
+## Vision
+
+{High-level product intent. What the user is building and core design principles.
+If this section exists from a previous run, PRESERVE IT — do not regenerate.
+If this is the first run, summarize what you learned from the codebase and task specs.}
 
 ## Critical Path
 
-The shortest path to the next shippable milestone:
+The shortest dependency chain to the next shippable milestone:
 
-1. **Task XX: Title** — Description
-   - Blocks: nothing
-   - Blocked by: nothing
-   - Complexity: Low/Medium/High
+1. **Task XX: Title** [complexity]
+   Blocked by: none
+2. **Task XX: Title** [complexity]
+   Blocked by: Task XX
+3. ...
 
-## All Tasks (prioritized)
+{Follow the Blocked by: fields to build the critical path. The longest chain of
+dependent tasks determines the minimum execution sequence.}
 
-| # | Task | Status | Complexity | Blocks | Blocked By | Notes |
-|---|------|--------|------------|--------|------------|-------|
-| XX | Title | todo | Medium | — | — | Notes |
+## Phases
+
+{For projects with 10+ tasks, group into logical phases:}
+
+### Phase 1: {theme}
+| # | Task | Priority | Complexity | Blocked By | Blocks |
+|---|------|----------|------------|------------|--------|
+
+### Phase 2: {theme}
+...
+
+{For projects with < 10 tasks, omit this section — the All Tasks table is sufficient.}
+
+## All Tasks
+
+| # | Task | Status | Priority | Complexity | Blocked By | Blocks | Notes |
+|---|------|--------|----------|------------|------------|--------|-------|
+| XX | Title | todo | high | medium | — | 05, 07 | Notes |
+
+## Dependency Graph
+
+{ASCII art showing task dependency flow. Only include for projects with 5+ tasks
+that have non-trivial dependencies:}
+
+```
+01 → 03 → 05
+02 → 04 ──|
+           |→ 06
+03 ───────|
+```
 
 ## Blocking Issues
 
-- Description of blocking issues and options
+{Issues preventing progress. Include both task-level blocks and external blockers
+(missing infrastructure, pending decisions, etc.)}
+
+## Architecture Notes
+
+{Key decisions that affect task planning.
+If this section exists from a previous run, PRESERVE IT — do not regenerate.
+Add new notes discovered during triage, but never remove existing ones.}
 
 ## Recently Completed
 
@@ -228,9 +273,13 @@ The shortest path to the next shippable milestone:
 |---|------|-----------|------------|
 | XX | Title | YYYY-MM-DD | How it was resolved |
 
-## Architecture Notes
+## Untracked Shipped Work
 
-Key decisions that affect task planning (auto-populated from codebase analysis).
+{Features shipped without corresponding tasks — discovered during triage.
+Keeps the project plan accurate even when work happens outside the task board.}
+
+| Feature | Key Files | Commits |
+|---------|-----------|---------|
 ```
 
 ---
@@ -249,15 +298,43 @@ Create a new file in `.metis/tasks/todo/` with the next available number:
 **Status:** todo
 **Priority:** {low|medium|high}
 **Complexity:** {low|medium|high}
+**Blocked by:** {task numbers, comma-separated, or "none"}
+**Blocks:** {task numbers, comma-separated, or "none"}
 
 ## Summary
 
-{Brief description of what needs to be done and why}
+{What and why — 2-3 sentences.}
+
+## Research Context
+
+{What already exists in the codebase that is relevant.
+- Existing files, utilities, patterns that touch this area
+- Data formats or schemas already in use
+Omit for greenfield tasks.}
 
 ## Requirements
 
 - {Requirement 1}
 - {Requirement 2}
+
+## Design
+
+{The approach. Algorithm, schema, state flow as needed.
+Omit for trivial tasks.}
+
+## Key Files
+
+| File | Action | What Changes |
+|------|--------|-------------|
+| `src/path/file.ts` | Modify | Description |
+
+## Scope Boundaries
+
+**NOT in scope (do NOT implement):**
+- {Explicit exclusions}
+
+**Files NOT to modify:**
+- {Files to leave alone}
 
 ## Acceptance Criteria
 
@@ -266,7 +343,7 @@ Create a new file in `.metis/tasks/todo/` with the next available number:
 
 ## Technical Details
 
-{Implementation guidance, relevant files, approach suggestions}
+{Implementation guidance, research hints for agents}
 ```
 
 ### Auto-Numbering
@@ -310,7 +387,7 @@ Spawn up to 3 Haiku agents in parallel, each gathering raw evidence for a batch 
 
 ```
 Task({
-  description: "Gather evidence for tasks ${startNum}-${endNum}",
+  description: "[Haiku] Gather evidence for tasks ${startNum}-${endNum}",
   prompt: `You are a data-gathering agent. Your job is to collect RAW EVIDENCE about each task — nothing more.
 
 Read the project's CLAUDE.md (if it exists) for codebase conventions.

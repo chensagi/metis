@@ -39,6 +39,15 @@ Strip `--super-ask` and `--quick` from arguments before passing to Step 1.
 - Pick the **lowest-numbered file** (highest priority)
 - Read that task file
 
+### Dependency Check
+
+After reading the task file, check its `Blocked by:` field (if present):
+1. If `Blocked by:` lists task numbers, check if those tasks are in `.metis/tasks/done/`
+2. If any blocker is still in `todo/` or `doing/` → **warn the user**: "Task XX is blocked by Task YY (still in {status}). Would you like to work on this anyway, or pick a different task?"
+3. If `Blocked by:` is "none" or absent → proceed normally
+
+This prevents wasted tokens implementing features whose foundations don't exist yet.
+
 ## Step 2: Understand and Clarify
 
 After reading the task file, **summarize** the task briefly to confirm understanding. Then branch based on mode:
@@ -140,9 +149,11 @@ Files to create/modify:
   - path/to/new-file.ts — [what it does]
     - exports: [exact exports with types]
 
-Wiring (existing files to update):
-  - path/to/router.ts — register new route handler
-  - path/to/index.ts — export new module
+Wiring Checks (machine-verified after implementation):
+  - [ ] path/to/router.ts: grep 'from.*handler' — import route handler
+        Action: import { myHandler } from '../handlers/myHandler'
+  - [ ] path/to/index.ts: grep 'export.*from.*handler' — barrel export
+        Action: export { myHandler } from './myHandler'
 
 Patterns to follow:
   - [existing pattern from codebase — reference specific files]
@@ -173,9 +184,11 @@ Files to create/modify:
     - function signatures: [exact function names, params, return types]
     - key logic: [what the implementation does, step by step]
 
-Wiring (existing files to update):
-  - path/to/router.ts — register new route handler
-  - path/to/index.ts — export new module
+Wiring Checks (machine-verified after implementation):
+  - [ ] path/to/router.ts: grep 'from.*handler' — import route handler
+        Action: import { myHandler } from '../handlers/myHandler'
+  - [ ] path/to/index.ts: grep 'export.*from.*handler' — barrel export
+        Action: export { myHandler } from './myHandler'
 
 Edge Case Handling:
   - [failure scenario] → [strategy, from Round 2 answers]
@@ -200,7 +213,7 @@ Complexity: Medium
 - Which capability instructions apply (for capability subsetting in Step 5)
 - Research hints for unfamiliar APIs or patterns
 - Explicit implementation details per file — not just "add auth" but "add middleware function that checks JWT token from Authorization header, returns 401 if invalid"
-- Wiring — which existing files to update for imports, route registration, barrel exports, navigation config, etc.
+- Wiring Checks — machine-verifiable checks: for each new file, specify the target_file, grep_pattern (flexible regex), and action. These are run mechanically after implementation — any failure blocks completion
 
 Wait for user approval before proceeding. If the user suggests changes, adjust the plan.
 
@@ -224,13 +237,14 @@ Construct a focused prompt for the Sonnet agent using the approved plan from Ste
 3. **Research hints** — from the plan (Step 3d) and any findings from Step 3b
 4. **CLAUDE.md** — read the project's `CLAUDE.md` (if it exists) for codebase conventions
 5. **Task file** — the full task spec from `.metis/tasks/doing/`
-6. **verify_command** — from `.metis/config.json` (may be null)
+6. **Scope boundaries** — extract "Scope Boundaries" section from the task spec (if present). Include "NOT in scope" items and "Files NOT to modify" as hard constraints in the agent prompt
+7. **verify_command** — from `.metis/config.json` (may be null)
 
 ### 5b: Spawn Sonnet Agent (foreground, blocking)
 
 <agent-prompt>
 Task({
-  description: "Implement task ${num}: ${name}",
+  description: "[Sonnet] Implement task ${num}: ${name}",
   prompt: `You are a task-filler agent. Implement the following plan exactly as specified.
 
 ## Project Conventions
@@ -251,11 +265,21 @@ ${approvedPlanFromStep3d}
 ## Task Spec
 ${taskFileContents}
 
+## Scope Boundaries (from task spec)
+${taskScopeBoundaries ? taskScopeBoundaries : 'No explicit scope boundaries defined for this task.'}
+
+NOT IN SCOPE — do NOT implement these, even if they seem related:
+${notInScope || 'N/A'}
+
+FILES NOT TO MODIFY — do NOT touch these files:
+${filesNotToModify || 'N/A'}
+
 ## Rules
 - Implement ALL files listed in the plan — do not skip any
 - Follow existing code patterns — read neighboring files to match style
-- Wire your code into the project — don't just create files. Update existing files to import, register, and connect your new modules (barrel exports, route registration, navigation config, app initialization). The plan's "Wiring" section specifies exactly what to update
+- Wire your code into the project — don't just create files. The plan includes "Wiring Checks" — these are machine-verified after you finish. For each check, the orchestrator runs `grep -q '${pattern}' ${target_file}`. If the grep fails, your work is REJECTED. Treat every wiring check as a hard requirement
 - Use exact types and interfaces from the plan
+- RESPECT SCOPE BOUNDARIES — if the task spec has a "Scope Boundaries" section, treat "NOT in scope" items and "Files NOT to modify" as hard constraints. Do not implement excluded features or touch excluded files
 - Be concise — don't explain what you're doing, just do it. Minimize reasoning output
 - Do NOT repeat the plan or requirements back. Just implement
 - ${verify_command ? 'End with ' + verify_command + ' returning ZERO errors. If there are errors, fix them before finishing' : 'No verify command configured — review your changes manually before finishing'}
@@ -272,9 +296,9 @@ ${taskFileContents}
 
 If the approved plan targets 4 or more files, decompose into 2-3 sequential work items before spawning:
 
-1. **Types/interfaces first** — shared definitions that other files depend on
-2. **Core logic** — business logic, services, utilities
-3. **Integration/wiring** — routing, config, exports, tests
+1. **Types/interfaces first** — shared definitions that other files depend on (no wiring checks needed)
+2. **Core logic + wiring** — business logic, services, utilities. Each work item wires its own files (barrel exports, service registration)
+3. **Entry points + wiring** — route handlers, screens, CLI commands. Each wires into the app's routing/navigation/config
 
 Spawn each work item as a separate Sonnet agent (foreground, sequential — not parallel, since `/task` is interactive). Each agent gets only the relevant subset of the plan.
 
@@ -292,7 +316,11 @@ Run each configured command from `.metis/config.json`, truncating output:
 2. **Test command** (if configured): `${test_command} 2>&1 | head -30` — find and run matching tests
 3. **Lint command** (if configured): `${lint_command} 2>&1 | head -30` — check changed files
 4. **Spot-check**: Glob for key files listed in the plan to confirm they exist
-5. **Wiring scan**: For each new file created, grep to check it's imported somewhere in the project. If new files exist but aren't imported anywhere (excluding test files and entry points), warn: "Potential wiring issue — [file] is not imported anywhere." The Sonnet fix agent (Step 6b) should wire it if the warning is legitimate
+5. **Wiring verification**: For each wiring check from the approved plan (Step 3d):
+   - Run: `grep -q '${grep_pattern}' ${target_file}`
+   - ANY failure → do NOT proceed to Step 7. Pass the failed checks to the fix agent (Step 6b) with the exact pattern, target file, and action needed
+   - After explicit checks pass, run a heuristic fallback for files not covered by any wiring check:
+     For new files without explicit wiring_checks, grep to check they're imported somewhere. Heuristic failures are WARNINGs only — present to user but don't block
 
 If no commands are configured, warn the user: "No verify/test/lint commands configured in .metis/config.json — verification skipped. Run `/install --update` to configure." Proceed only after the user acknowledges.
 
@@ -308,7 +336,7 @@ If verification fails, do NOT fix code directly as Opus. Spawn a Sonnet fix agen
 
 <agent-prompt>
 Task({
-  description: "Fix errors in task ${num}: ${name}",
+  description: "[Sonnet] Fix errors in task ${num}: ${name}",
   prompt: `You are a fix agent. The implementation has verification errors. Fix them.
 
 ## Errors

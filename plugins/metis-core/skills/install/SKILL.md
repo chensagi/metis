@@ -204,7 +204,143 @@ echo '{ "agents": [], "completed": [], "needs_review": [] }' > .metis/agents.jso
 echo '{ "entries": [], "suggestions_applied": [] }' > .metis/learnings.json
 ```
 
-### Step 10: Report Success
+### Step 9.5: Generate Makefile
+
+If no `Makefile` exists in the project root, offer to generate one with profile-appropriate targets. **Never overwrite an existing Makefile.**
+
+1. Check for `Makefile` in project root
+2. If it exists → skip this step entirely (tell the user "Makefile already exists — skipping generation")
+3. If not → read `makefile_targets` from the profile JSON and generate a Makefile
+
+The profile's `makefile_targets` field defines which targets to include. Each target has a command, description, and optional dependencies.
+
+**Makefile conventions (learned from production projects):**
+
+```makefile
+.PHONY: help
+help: ## Show available commands
+	@echo ""
+	@echo "  Available commands:"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+
+.DEFAULT_GOAL := help
+```
+
+- Every target has a `## description` comment for the self-documenting `make help`
+- Use ANSI colors for readability
+- Include a `check` meta-target that runs all quality gates (typecheck + lint + test)
+- Include `clean` and `nuke` targets where appropriate
+
+Present the generated Makefile to the user for approval before writing:
+
+```
+MAKEFILE
+═══════════════════════════════════════════════════
+
+Generated {N} targets for {profile_name}:
+
+  make dev          — Start development server
+  make check        — Run all quality gates
+  make test         — Run test suite
+  ...
+
+Write Makefile to project root?
+═══════════════════════════════════════════════════
+```
+
+Use AskUserQuestion:
+- "Write it" → Write the Makefile
+- "Skip" → Don't create a Makefile
+
+### Step 10: Configure OpenTelemetry
+
+Read the project's `.claude/settings.json` (create the file if it doesn't exist, create the `.claude/` directory if needed). Merge in the OTEL env vars — preserve any existing keys, only add/update the `env` keys below:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "prometheus",
+    "OTEL_METRIC_EXPORT_INTERVAL": "10000"
+  }
+}
+```
+
+This makes Claude Code serve metrics at `http://localhost:8888/metrics`. The user needs to restart Claude Code once for the env vars to take effect.
+
+Tell the user:
+
+```
+OTEL cost tracking enabled — restart Claude Code to activate.
+After restart, Metis will show real costs in /swarm status.
+```
+
+### Step 10.5: CLAUDE.md Guidance
+
+Check if `CLAUDE.md` exists in the project root. This file is the single most impactful context for agent success — rich CLAUDE.md files dramatically improve agent output quality.
+
+**If CLAUDE.md does not exist:**
+
+Offer to create a starter template with profile-appropriate sections:
+
+```
+CLAUDE.md
+═══════════════════════════════════════════════════
+
+No CLAUDE.md found. This file is your project's instruction
+manual for AI agents — it dramatically improves agent quality.
+
+Recommended sections for {profile_name}:
+
+  Core (all profiles):
+    ✓ Project overview & mission
+    ✓ Architecture overview
+    ✓ Development workflow (build, test, deploy)
+    ✓ Conventions (naming, file structure, patterns)
+    ✓ Don't (common mistakes to avoid)
+
+  Profile-specific ({profile_name}):
+    {profile_specific_sections}
+
+Create a starter CLAUDE.md?
+═══════════════════════════════════════════════════
+```
+
+**Profile-specific sections:**
+
+| Profile | Additional Sections |
+|---------|-------------------|
+| `react-native-expo` | View Hierarchy, Native Rebuild Rules, OTA Update Flow, Maestro Patterns, Data Formats |
+| `typescript-node` | API Contract, Module Structure, Error Handling Conventions |
+| `python-fastapi` | API Contract, Database Schema, Middleware Chain, Pydantic Models |
+| `go-service` | Package Layout, Error Handling Conventions, Interface Patterns |
+
+If the user approves, generate a skeleton `CLAUDE.md` with section headers and brief placeholder text explaining what to put in each section. Do NOT fill in content — the user knows their project best.
+
+**If CLAUDE.md already exists:**
+
+Scan for missing recommended sections and suggest additions:
+
+1. Read the file
+2. Check for each recommended section (case-insensitive heading match)
+3. If any are missing, suggest them:
+
+```
+Your CLAUDE.md is missing these recommended sections:
+  - "Don't" — common mistakes agents should avoid
+  - "Data Formats" — TypeScript interfaces for key data structures
+
+Add them? (will append section headers only)
+```
+
+Use AskUserQuestion:
+- "Add missing sections" → Append section headers to CLAUDE.md
+- "Skip" → Continue without changes
+
+### Step 11: Report Success
 
 ```
 METIS INSTALLED

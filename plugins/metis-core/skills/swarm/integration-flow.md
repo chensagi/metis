@@ -8,7 +8,7 @@ Spawn a cheap Haiku agent to run all checks:
 
 <agent-prompt>
 Task({
-  description: "Integration check: ${taskList}",
+  description: "[Haiku] Integration check: ${taskList}",
   prompt: `You are a diagnostic agent. Your job is to run checks and produce a structured report. Do NOT fix anything — only report.
 
 Read the project's CLAUDE.md (if it exists) for codebase conventions.
