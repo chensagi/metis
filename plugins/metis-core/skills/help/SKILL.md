@@ -70,6 +70,7 @@ Daily Work
   /task [N]           Pick up and complete a task
   /task --super-ask   Thorough multi-round questioning first
   /swarm              Parallel task execution (dedicated session)
+  /swarm-tracks       Multi-session parallel dev via git worktrees
   /triage             Audit backlog, detect stale tasks
   /triage create "…"  Add a new task
   /create-tasks       Interview-driven bulk task generation
@@ -110,7 +111,7 @@ Getting Started
   /help workflow         Learn about Metis's cost-efficient approach
 
 All Skills
-  /task    /swarm    /triage    /ship    /learn    /add-metiskill
+  /task    /swarm    /swarm-tracks    /triage    /ship    /learn    /add-metiskill
 
 ═══════════════════════════════════════════════════
 
@@ -133,7 +134,7 @@ Getting Started
   /help getting-started  Step-by-step onboarding guide
 
 All Skills
-  /task    /swarm    /triage    /ship    /learn    /add-metiskill
+  /task    /swarm    /swarm-tracks    /triage    /ship    /learn    /add-metiskill
 
 ═══════════════════════════════════════════════════
 

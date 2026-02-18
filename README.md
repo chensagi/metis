@@ -76,6 +76,7 @@ This sequence is the reason token usage stays predictable.
 | `/migrate` | Import setup from Cursor/Copilot/Windsurf/etc. | Opus |
 | `/task [N] [--super-ask]` | Complete one task with planning and verification | Opus + Sonnet/Haiku |
 | `/swarm [--budget N] [--controlled]` | Parallel execution loop for backlog throughput | Opus + Sonnet/Haiku |
+| `/swarm-tracks [status\|teardown]` | Multi-session parallel dev via git worktrees | Opus |
 | `/triage` | Audit tasks against actual codebase state | Opus + Haiku |
 | `/triage create "title"` | Create a new backlog task | Opus |
 | `/create-tasks` | Interview-driven task generation | Opus |

@@ -15,5 +15,15 @@
     "lint_command": "golangci-lint run",
     "src_dirs": ["cmd/", "internal/", "pkg/"]
   },
+  "makefile_targets": {
+    "build": { "command": "go build ./...", "description": "Build all packages" },
+    "run": { "command": "go run ./cmd/server", "description": "Run the service" },
+    "test": { "command": "go test ./...", "description": "Run test suite" },
+    "lint": { "command": "golangci-lint run", "description": "Lint source files" },
+    "vet": { "command": "go vet ./...", "description": "Vet source files" },
+    "fmt": { "command": "gofmt -w .", "description": "Format source files" },
+    "check": { "command": "make vet && make lint && make test", "description": "Run all quality gates", "deps": ["vet", "lint", "test"] },
+    "clean": { "command": "go clean ./...", "description": "Clean build cache" }
+  },
   "questions": []
 }

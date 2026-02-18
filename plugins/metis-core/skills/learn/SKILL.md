@@ -190,6 +190,17 @@ When the Haiku agent returns its raw data, YOU (Opus) perform the actual analysi
    - Does it match how this project actually uses the technology?
    - Project-specific conventions that should be added?
 
+6. **CLAUDE.md HEALTH** — Analyze the project's CLAUDE.md (if it exists)
+   - Check completeness against profile-recommended sections:
+     - **All profiles:** Architecture, Conventions, Development Workflow, Don't
+     - **react-native-expo:** + View Hierarchy, Native Rebuild Rules, Data Formats, Maestro Patterns
+     - **typescript-node:** + API Contract, Module Structure, Error Handling
+     - **python-fastapi:** + API Contract, Database Schema, Middleware Chain, Pydantic Models
+     - **go-service:** + Package Layout, Error Handling, Interface Patterns
+   - Suggest a "Don't" section with common anti-patterns for the stack (based on codebase exploration and learnings.json error patterns)
+   - Suggest a "Data Formats" section if TypeScript interfaces or Pydantic models are found in code but not documented in CLAUDE.md
+   - If CLAUDE.md doesn't exist, flag it as a high-priority recommendation — this file is the single most impactful context for agent quality
+
 ### Step 3: Tool/Library Discovery
 
 During deep analysis, search the web for tools that could benefit the project:

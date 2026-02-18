@@ -42,17 +42,31 @@ ${test_command} -- [relevant test files or patterns]
 
 ## 6. Wiring Verification
 
-For each new file created by completed tasks:
+### 6a. Explicit Wiring Checks (PRIMARY — blocks on failure)
 
-- **Import check**: Is the file imported by at least one other file? (`grep -r "from.*filename"`)
+If wiring_checks metadata is available from the task decomposition, verify each one mechanically:
+
+For each completed task's work items, for each wiring_check:
+```bash
+grep -q "${grep_pattern}" "${target_file}" || echo "FAILED: ${description}"
+```
+
+Report each pass/fail individually. Any failure is a CRITICAL integration issue that must be fixed before the swarm can complete.
+
+### 6b. Heuristic Scan (SECONDARY — warns only, catches gaps in explicit checks)
+
+For files NOT covered by any explicit wiring_check, run the heuristic scan:
+
+- **Import check**: Is the file imported by at least one other file? (`grep -r "from.*basename"`)
 - **Barrel export**: If the file is in a directory with an index.ts, is it re-exported?
 - **Route registration**: If it's a route handler/endpoint, is it registered in the router?
 - **Navigation config**: If it's a screen/page, is it added to the navigator/router config?
 - **Service registration**: If it's a service/provider, is it initialized in the app bootstrap?
 - **Config entries**: If it introduces new config options, are they added to the config schema?
 
-Files that are legitimately standalone (tests, scripts, configs) can be excluded.
-Mark any unconnected file as a FAILED wiring check.
+Files that are legitimately standalone: test files (`*.test.*`, `*.spec.*`), scripts (`scripts/`), config files (`*.config.*`), entry points (`index.ts` at project root, `App.tsx`).
+
+Heuristic failures are WARNINGS, not FAILED — they may indicate missing explicit wiring_checks in the decomposition rather than actual dead code.
 
 ## Output Format
 
