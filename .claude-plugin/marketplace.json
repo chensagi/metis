@@ -9,6 +9,11 @@
       "name": "metis",
       "source": "./plugins/metis-core",
       "description": "Generic swarm orchestration — parallel task execution with automatic dependency management, budget tracking, and codebase-aware triage."
+    },
+    {
+      "name": "ios-qa",
+      "source": "./plugins/ios-qa",
+      "description": "Spec-driven visual QA for iOS apps. Reads task specs, verifies acceptance criteria through the simulator, applies an opinionated User Complaint Filter, and fixes simple issues directly. Includes batch PR review and a session manager."
     }
   ]
 }
