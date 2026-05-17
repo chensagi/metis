@@ -6,9 +6,9 @@
 
 ```
 Open PRs:
-  #243 — feat: portfolio expansion (JS-only, no previous QA)
+  #243 — feat: profile redesign (JS-only, no previous QA)
   #242 — fix: session snapshot fields (JS-only, already reviewed, no new commits)
-  #241 — fix: hide tournament (native change — modifies app.json)
+  #241 — fix: hide debug menu (native change — modifies app.json)
 
 Simulator: booted, app running
 Bundler: running on configured metroUrl
@@ -35,9 +35,9 @@ Cleaned up 1 stale -qa branch: feat-portfolio-expansion-qa
 
 | PR | Title | Status |
 |----|-------|--------|
-| #243 | feat: portfolio expansion | WILL QA |
+| #243 | feat: profile redesign | WILL QA |
 | #242 | fix: session snapshot fields | SKIP — already reviewed (no new commits) |
-| #241 | fix: hide tournament | SKIP — native changes |
+| #241 | fix: hide debug menu | SKIP — native changes |
 
 Eligible: 1 | Skipped: 2
 ```
@@ -46,11 +46,11 @@ Eligible: 1 | Skipped: 2
 
 ```
 ============================================================
-QA: PR #243 — feat: portfolio expansion
+QA: PR #243 — feat: profile redesign
 ============================================================
 
-[/ios-qa --from-pr 243 runs: checkout → bundler poll → screenshot Portfolio,
- Market, Stock Detail → User Complaint Filter → post visual QA comment → restore]
+[/ios-qa --from-pr 243 runs: checkout → bundler poll → screenshot Profile,
+ Settings, Edit Profile → User Complaint Filter → post visual QA comment → restore]
 
 ✓ Visual QA posted to PR #243
 
@@ -70,9 +70,9 @@ QA Batch Complete
 
 | PR | Title | Result | Labeled |
 |----|-------|--------|---------|
-| #243 | feat: portfolio expansion | ✓ Reviewed | ✓ ready |
+| #243 | feat: profile redesign | ✓ Reviewed | ✓ ready |
 | #242 | fix: session snapshot fields | ⏭ already reviewed (no new commits) | — |
-| #241 | fix: hide tournament | ⏭ native changes | — |
+| #241 | fix: hide debug menu | ⏭ native changes | — |
 
 **Batch stats:**
 - PRs scanned: 3

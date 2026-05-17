@@ -677,10 +677,10 @@ The `## Requirements` section is human-readable and more detailed than acceptanc
 
 | Type | Example | How to Verify |
 |------|---------|---------------|
-| **UI** | "Tournament screen accessible from lobby" | Navigate + screenshot |
-| **Behavior** | "Enter Tournament starts game with fixed parameters" | Tap + verify resulting screen |
+| **UI** | "Settings screen accessible from profile" | Navigate + screenshot |
+| **Behavior** | "Save button persists changes and dismisses sheet" | Tap + verify resulting screen |
 | **Code** | "All types pass `tsc --noEmit`" | Run typecheck or Grep |
-| **Data** | "Player's own entry highlighted in leaderboard" | Requires specific app state — try to set up, or SKIP |
+| **Data** | "Current user's row highlighted in list" | Requires specific app state — try to set up, or SKIP |
 | **Non-verifiable** | "No performance issues" | Can't verify in screenshot — SKIP |
 
 If you can't set up the required state, SKIP with a clear note rather than guessing.
