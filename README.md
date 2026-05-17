@@ -36,6 +36,12 @@ Most AI coding sessions fail for predictable reasons: unclear requirements, too 
 /plugin install metis@metis
 ```
 
+Optional companion for iOS app developers:
+
+```bash
+/plugin install ios-qa@metis    # visual QA against the iOS Simulator (bundles the ios-simulator MCP)
+```
+
 ### 3) Bootstrap your project
 
 ```bash
@@ -92,6 +98,19 @@ This sequence is the reason token usage stays predictable.
 | `/scaffold-skill` | Scaffold a new core skill |
 | `/validate` | Validate skill/capability conventions |
 | `/release` | Bump version and tag release |
+
+### iOS QA (optional `ios-qa@metis` plugin)
+
+Install separately with `/plugin install ios-qa@metis`. Bundles the [`ios-simulator`](https://www.npmjs.com/package/ios-simulator-mcp) MCP — no extra setup.
+
+| Command | What it does |
+|---|---|
+| `/ios-qa [task-number\|--from-pr N\|smoke\|full]` | Spec-driven visual QA against a running simulator |
+| `/ios-fixer` | Root-cause analyzer + fixer, auto-invoked by `/ios-qa` for escalations |
+| `/qa [PR\|refresh\|exit]` | Lightweight QA session manager — enter / exit / refresh a PR or branch |
+| `/qa-batch [PR…\|--dry-run]` | Iterate open PRs, post visual QA + review comments, auto-label clean ones |
+
+See [`plugins/ios-qa/README.md`](plugins/ios-qa/README.md) for configuration and the User Complaint Filter.
 
 ## Profiles and Capability System
 
@@ -196,20 +215,28 @@ Supports migration from Cursor, GitHub Copilot, Windsurf, Aider, Continue, Roo C
 ```text
 metis/
 ├── .claude-plugin/
-│   └── marketplace.json
+│   └── marketplace.json        # declares both plugins below
 ├── plugins/
-│   └── metis-core/
+│   ├── metis-core/             # /plugin install metis@metis
+│   │   ├── .claude-plugin/
+│   │   │   └── plugin.json
+│   │   ├── capabilities/
+│   │   │   ├── registry.json
+│   │   │   └── <capability>/capability.md
+│   │   ├── profiles/
+│   │   │   └── *.json
+│   │   ├── skills/
+│   │   │   └── <skill>/SKILL.md
+│   │   ├── hooks/
+│   │   │   └── hooks.json
+│   │   └── README.md
+│   └── ios-qa/                 # /plugin install ios-qa@metis (optional)
 │       ├── .claude-plugin/
 │       │   └── plugin.json
-│       ├── capabilities/
-│       │   ├── registry.json
-│       │   └── <capability>/capability.md
-│       ├── profiles/
-│       │   └── *.json
+│       ├── .mcp.json           # bundles ios-simulator-mcp
 │       ├── skills/
 │       │   └── <skill>/SKILL.md
-│       ├── hooks/
-│       │   └── hooks.json
+│       ├── LICENSE
 │       └── README.md
 ├── CLAUDE.md
 └── README.md
