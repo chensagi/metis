@@ -183,12 +183,12 @@ A targeted `Edit` — one change, one purpose. Examples:
 
 ```python
 # Missing testID
-Edit(file_path=..., old_string='<Button onPress={handleCompare}>',
-     new_string='<Button testID="compare-button" onPress={handleCompare}>')
+Edit(file_path=..., old_string='<Button onPress={handleConfirm}>',
+     new_string='<Button testID="confirm-button" onPress={handleConfirm}>')
 
 # Wrong testID
-Edit(file_path=..., old_string='testID="buy-button-AAPL"',
-     new_string='testID="stock-buy-button-AAPL"')
+Edit(file_path=..., old_string='testID="submit-button"',
+     new_string='testID="submit-button-primary"')
 
 # Missing handler
 Edit(file_path=..., old_string='<Button>Submit</Button>',
@@ -265,12 +265,12 @@ DO:
 ### Good: missing testID (1 attempt)
 
 ```
-Input: "Compare button not found"
+Input: "Confirm button not found"
 
 Attempt 1:
-  Diagnose: Pressable with AXLabel="Compare", no testID
-  Locate:   src/components/StockComparisonModal.tsx:42
-  Fix:      Added testID="compare-button"
+  Diagnose: Pressable with AXLabel="Confirm", no testID
+  Locate:   src/components/ConfirmModal.tsx:42
+  Fix:      Added testID="confirm-button"
   Verify:   ✅ found
 
 Result: FIXED (1 attempt)
@@ -279,17 +279,17 @@ Result: FIXED (1 attempt)
 ### Good: wrong testID (2 attempts, second corrects a typo)
 
 ```
-Input: "Element 'stock-buy-button-AAPL' not found"
+Input: "Element 'submit-button-primary' not found"
 
 Attempt 1:
-  Diagnose: testID="buy-button-AAPL" present
-  Locate:   src/components/TradeModal.tsx:56
-  Fix:      Change to testID="stock-buy-button-AAPL"
+  Diagnose: testID="submit-button" present
+  Locate:   src/components/DetailView.tsx:56
+  Fix:      Change to testID="submit-button-primary"
   Verify:   ❌ still not found
 
 Attempt 2:
-  Diagnose: testID now "stock-buy-button-APPL" (typo from previous edit)
-  Fix:      Correct to AAPL
+  Diagnose: testID now "submit-buton-primary" (typo from previous edit)
+  Fix:      Correct the typo
   Verify:   ✅ found
 
 Result: FIXED (2 attempts)
@@ -302,12 +302,12 @@ Input: "Chart doesn't update after timeframe change"
 
 Attempt 1:
   Diagnose: WebView exists, data stale. Bridge issue, no clear fix from local code.
-  Classify: UNFIXABLE (WebView bridge complexity)
+  Classify: UNFIXABLE (native ↔ JS bridge complexity)
 
 Result: NEEDS_MANUAL
-Report: "Likely a WebView ↔ JS bridge update missing for the new timeframe.
-        Component: src/components/TradingViewChart.tsx
-        Suggested next step: trace the timeframe prop into the WebView postMessage."
+Report: "Likely a native ↔ JS bridge update missing for the new timeframe.
+        Component: src/components/ChartView.tsx
+        Suggested next step: trace the timeframe prop into the JavaScript bridge call."
 ```
 
 ### Bad: don't do this
