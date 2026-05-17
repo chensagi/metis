@@ -15,9 +15,11 @@ Originally extracted from a production React Native / Expo project, generalized 
 
 ## Requirements
 
-### iOS Simulator MCP server (required)
+### iOS Simulator MCP server (bundled)
 
-The `ios-qa` and `ios-fixer` skills drive the simulator through MCP tools named `mcp__ios-simulator__*`. You need an MCP server that exposes the following (or any subset you intend to use):
+The `ios-qa` and `ios-fixer` skills drive the simulator through MCP tools named `mcp__ios-simulator__*`. The plugin bundles the [`ios-simulator-mcp`](https://www.npmjs.com/package/ios-simulator-mcp) server via `.mcp.json` — Claude Code starts it automatically when you enable the plugin (`npx -y ios-simulator-mcp`). No separate `claude mcp add` step needed.
+
+The bundled server exposes:
 
 ```
 mcp__ios-simulator__get_booted_sim_id
@@ -31,7 +33,7 @@ mcp__ios-simulator__ui_swipe
 mcp__ios-simulator__ui_type
 ```
 
-Any compatible server works (search the MCP registry for "ios-simulator"). If you don't have it installed, install it before running `/ios-qa` — the skill will fail fast when it tries to grab the booted simulator ID.
+If you'd rather wire your own server, override the name `ios-simulator` in your project's `.mcp.json` — the skills only depend on the tool prefix.
 
 ### Tooling
 
