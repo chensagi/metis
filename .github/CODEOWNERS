@@ -1,0 +1,9 @@
+# Code owners for chensagi/metis
+#
+# The owner(s) listed here are automatically requested for review on every PR
+# and — combined with the branch-protection rule on `main` that requires code
+# owner review — must approve before any PR can be merged.
+#
+# @chensagi is the sole code owner of the entire repository.
+
+* @chensagi
