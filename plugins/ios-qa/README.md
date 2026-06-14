@@ -39,6 +39,14 @@ If you'd rather wire your own server, override the name `ios-simulator` in your 
 
 - macOS with Xcode + the iOS Simulator
 - `gh` CLI (used by `qa`, `qa-batch`, and PR mode of `ios-qa`)
+- **idb (iOS Development Bridge)** — used by the bundled MCP server for UI interaction and element inspection. Install via:
+  ```bash
+  brew tap facebook/fb
+  brew install idb-companion
+  pip3 install fb-idb
+  ```
+- **cwebp** (optional, `brew install webp`) — for AI-optimized WebP evidence compression. Without it, the skill automatically falls back to JPEG via `sips` (ships with macOS).
+- **Accessibility permission** (iPad mode only) — `rotate.sh` drives Simulator.app rotation via `osascript`; grant the terminal/app running Claude Code Accessibility permission once at System Settings → Privacy & Security → Accessibility.
 - A bundler that supports hot reload (Metro/Expo, or your equivalent) running locally on the URL you configure
 - The Metis plugin / `.metis/tasks/` directory if you want spec mode (`/ios-qa <task-number>`)
 
@@ -67,7 +75,10 @@ Create `.claude/ios-qa.json` in your project root. The skills read this file at 
     "src/screens/Profile.tsx": "Profile",
     "src/components/Card.tsx": "Home"
   },
-  "projectPitfalls": []
+  "projectPitfalls": [],
+  "iphoneSimulator": "iPhone 17 Pro Max",
+  "ipadSimulator": "iPad Pro 13-inch (M5)",
+  "rotationAllowList": []
 }
 ```
 
@@ -84,6 +95,9 @@ Create `.claude/ios-qa.json` in your project root. The skills read this file at 
 | `smokeScreens` | no | Screens scanned in smoke mode and as a baseline in on-branch mode. |
 | `fileToScreenMap` | no | Maps changed files (or glob-like patterns) to affected screens. Used by PR mode to scope the scan. The more accurate this is, the less work the skill does on each PR. |
 | `projectPitfalls` | no | Free-form list of project-specific code-review checks. Each entry is shown as a checkbox in `qa-batch` review comments. Example: `"No ES5 getters in persisted Zustand stores"`. |
+| `iphoneSimulator` | no | Simulator device name booted on default runs. Default `iPhone 17 Pro Max`. Must match a device in `xcrun simctl list devices`. |
+| `ipadSimulator` | no | Simulator device name booted on `--device ipad` runs. Default `iPad Pro 13-inch (M5)`. |
+| `rotationAllowList` | no | Screens allowed to rotate on iPad, e.g. `[{ "screen": "Detail modal", "reflowSurface": "chart WebView" }]`. Empty = everything locked portrait. See the skill's `ipad-policy.md`. |
 
 ### Env var fallback
 
@@ -122,6 +136,24 @@ Reads `.metis/tasks/done/130-*.md`, parses the acceptance-criteria checklist, na
 /ios-qa --from-pr 185        # checkout PR 185, scope to changed screens, post report as PR comment
 /ios-qa --from-pr feat/x     # same, for a branch name (no PR comment — output goes to terminal)
 ```
+
+### iPad layout + rotation audit
+
+```
+/ios-qa --device ipad              # full run on the iPad simulator + orientation policy audit
+/ios-qa 130 --device ipad          # spec mode on iPad
+```
+
+Every screen gets an extra rotation check: locked-portrait screens must not rotate, allow-listed screens must rotate AND reflow their content. Requires the one-time Accessibility permission (see Requirements).
+
+### Evidence trail
+
+```
+/ios-qa --evidence-dir docs/qa-evidence/2026-06-12    # persist screenshot + element dump per screen
+/ios-qa --evidence-dir <path> --full-res              # keep raw PNGs (for human review)
+```
+
+By default evidence is compressed to ~784 px WebP (JPEG fallback) — optimized for re-reading by AI in later sessions at ~4× lower token cost. Scheduled callers like `/qa-batch` use this to prove visual-QA claims after the fact.
 
 ### Batch PR review
 
@@ -165,3 +197,13 @@ This plugin is a generalized extract of an in-house QA suite. The main changes:
 4. **Project-specific code-review pitfalls** were removed from `qa-batch` and replaced with the optional `projectPitfalls` config field — bring your own.
 5. **Default branch** is configurable (the original was hardcoded to `main`).
 6. **Metro readiness** check is configurable for non-Expo projects.
+7. **Simulator device names** (`iphoneSimulator` / `ipadSimulator`) moved to config; device boot uses plain `xcrun simctl` instead of a project-local script.
+8. **iPad rotation allow-list** moved to the `rotationAllowList` config key + a codebase discovery grep, replacing a hardcoded screen list.
+9. **PR labels** (`rebuild-required` / `native-verified`) degrade gracefully — if the labels don't exist in your repo, the skill falls back to comment-only.
+
+## Troubleshooting
+
+### `idb` connection errors / missing dependencies
+- Verify the companion is running: `idb list-targets`
+- If target is missing, start/connect it: `idb connect <udid>` or restart the daemon: `idb kill && idb list-targets`
+- Ensure python dependencies are correct: `pip3 install fb-idb` and `idb-companion` is up to date via Homebrew.
