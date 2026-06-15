@@ -214,6 +214,17 @@ ACTION: [what to do next]
 
 When invoked with `--evidence-dir <path>`, ios-qa writes a tamper-evident audit trail for every screen it scans. Scheduled callers (e.g., `/qa-batch`) use this to prove their visual-QA claims after the fact — without it, the recorded verdict is unverifiable.
 
+**Every screen produces a small evidence set** — the durable artifacts live in the evidence dir; the raw stays in volatile `/tmp`:
+
+| Artifact | Location | Lossless? | Read it for |
+|---|---|---|---|
+| `<slug>.webp` (784 px, q70) | evidence dir | no | the **default** read — fast, ~380 tokens, holds ~4× more screens in context |
+| `<slug>.png` (full-res raw) | `/tmp` (volatile) | **yes** | the **forensic fallback** — re-decide any call the webp renders ambiguously, in-run |
+| `<slug>.describe.json` | evidence dir | **yes** | the **text** ground truth — labels, values, element tree (never pixel-read text off an image) |
+| `<slug>.manifest.json` | evidence dir | — | SHA-256 of the artifacts above — the mechanism that makes "tamper-evident" true |
+
+The **User Complaint Filter applies identically to whichever artifact you read** — same tiers, same blocker thresholds. Between the webp and the raw the only thing that changes is fidelity, never the bar.
+
 **Setup (once per run, in PHASE 0):**
 
 ```python
@@ -236,20 +247,54 @@ if evidence_dir:
     slug = re.sub(r'[^a-z0-9]+', '-', screen.lower()).strip('-')
     screen_counter[slug] = screen_counter.get(slug, 0) + 1
     suffix = "" if screen_counter[slug] == 1 else f"-{screen_counter[slug]}"
-    raw = f"/tmp/qa-raw-{slug}{suffix}.png"        # full-res original stays in /tmp
+    base = f"{slug}{suffix}"
+
+    # Raw PNG stays in volatile /tmp — the in-run forensic source for the
+    # dual-read fallback and for crops. NOT copied into the evidence dir; the
+    # OS wipes /tmp on reboot, so nothing full-res accumulates durably.
+    raw = f"/tmp/qa-raw-{base}.png"
     mcp__ios-simulator__screenshot(output_path=raw)
-    compress_evidence(raw, f"{evidence_dir}/{slug}{suffix}")   # skip if --full-res:
+    compress_evidence(raw, f"{evidence_dir}/{base}")   # skip if --full-res:
                                                    # then save the PNG to evidence_dir directly
-    Write(f"{evidence_dir}/{slug}{suffix}.describe.json", json.dumps(elements, indent=2))
+    Write(f"{evidence_dir}/{base}.describe.json", json.dumps(elements, indent=2))
+
+    # MANIFEST — the tamper-evidence the audit-trail promise depends on, and the
+    # index the dual-read fallback uses to LOCATE the raw. sha256 every artifact
+    # (shasum -a 256) so a later audit can re-hash and prove nothing was swapped.
+    # Shape: see "Manifest schema" below.
+    write_manifest(f"{evidence_dir}/{base}.manifest.json", screen=base, raw=raw,
+                   webp=f"{evidence_dir}/{base}.webp",
+                   describe=f"{evidence_dir}/{base}.describe.json")
 ```
 
-Capturing the raw PNG to `/tmp` and compressing INTO the evidence dir means no `rm` is ever
-needed, and the full-res original survives the run — free source material for forensic crops.
-`/tmp` is wiped by the OS on reboot; do NOT add your own cleanup step.
+The raw PNG stays in `/tmp` and the webp is compressed INTO the evidence dir, so no `rm` is ever
+needed and nothing full-res accumulates durably — `/tmp` is wiped by the OS on reboot. The raw is
+the in-run source for the dual-read fallback and forensic crops; its path is recorded in each
+screen's manifest. Do NOT copy the raw into the evidence dir and do NOT add your own cleanup step.
+
+**Manifest schema** — `write_manifest` emits this JSON (`sha256` via `shasum -a 256`):
+
+```json
+{
+  "screen": "<base>",
+  "udid": "<booted simulator udid>",
+  "image":    { "path": "<evidence_dir>/<base>.webp", "format": "webp", "width": W, "height": 784,
+                "bytes": N, "sha256": "…", "compression": "webp-q70", "target_long_edge": 784 },
+  "describe": { "path": "<evidence_dir>/<base>.describe.json", "bytes": N, "sha256": "…" },
+  "raw":      { "path": "/tmp/qa-raw-<base>.png", "width": 1320, "height": 2868,
+                "bytes": N, "sha256": "…", "volatile": true }
+}
+```
+
+Durable tamper-evidence covers `image` + `describe` (both in the evidence dir — re-hashable
+forever). `raw` is hashed at write time but its `/tmp` path is wiped on reboot, so it re-verifies
+only within the run. A consumer verifies the trail by re-hashing each `path` and comparing to its
+`sha256`. Under `--full-res` there is no webp — point `image` at the full-res PNG and set `raw` to
+the same path.
 
 If `--evidence-dir` is not set, skip persistence entirely — the inline screenshot in model context is the only capture (default behavior, no extra disk I/O).
 
-**Hard rule:** if `--evidence-dir` is set and any screenshot or describe write fails, that's a blocker — write `status: evidence_persist_failed` to the report and stop. A run with a half-written evidence dir is worse than no evidence dir at all (looks like proof, isn't). Compression failure is NOT a blocker — keep the full-res PNG and move on (evidence intact, just bigger).
+**Hard rule:** if `--evidence-dir` is set and any screenshot, describe, or manifest write fails, that's a blocker — write `status: evidence_persist_failed` to the report and stop. A run with a half-written evidence dir is worse than no evidence dir at all (looks like proof, isn't). Compression failure is NOT a blocker — keep the full-res raw PNG and move on (evidence intact, just bigger; the manifest still hashes the raw).
 
 ### AI-Optimized Compression
 
@@ -287,11 +332,19 @@ WebP; `cwebp` is Homebrew). Both formats are natively supported by the Claude AP
 tool. Measured cost: ~60 ms per image — negligible even across a full multi-screen sweep.
 
 **Rules:**
+- **Dual-read fallback — never record a borderline call off the lossy webp alone.** The webp is
+  the default read. But if a User Complaint Filter check turns on something the webp renders
+  ambiguously — a maybe-clipped label, a `0`/`8` glyph, a 1-px misalignment, a faint border,
+  gradient banding — open the raw PNG (its `/tmp` path is in the screen's `.manifest.json`) and
+  apply the **same** filter — same tiers, same blocker thresholds — to the raw before writing
+  pass/fail. The raw decides; only fidelity changes, never the bar. A PASS recorded off an
+  ambiguous webp without consulting the raw is a regression, not a pass. The raw lives in `/tmp`,
+  so this fallback works in-run — decide borderline calls during the run, before a reboot clears it.
 - **Forensic crops come from the raw, never the compressed file.** If a finding needs
   pixel-level zoom (glyph ambiguity, 1-px misalignment), crop from the full-res `/tmp` capture
-  and save the crop as lossless PNG in the evidence dir (`<slug>-crop-<what>.png`) — /tmp is
-  wiped on reboot, the evidence dir is the durable record. Lossy artifacts destroy zoom-ability
-  permanently.
+  (path in the screen's manifest) and save the crop as lossless PNG in the evidence dir
+  (`<slug>-crop-<what>.png`) — the crop is durable even though the raw isn't. Lossy artifacts
+  destroy zoom-ability permanently; never crop from the webp.
 - Never resize below 560 px on the long edge or quality below 50 — and never below 200 px on
   either edge (degrades model performance per Anthropic docs).
 - `--full-res` flag skips compression entirely (keep raw PNGs) for runs where a human will
