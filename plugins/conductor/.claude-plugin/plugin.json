@@ -1,0 +1,9 @@
+{
+  "name": "conductor",
+  "description": "A budget-bounded orchestrator for Claude Code: frames a goal, plans with superpowers, dispatches isolated workers, verifies each result against a ground-truth oracle, and reports. Judgment-first, model-agnostic, superpowers-native. Successor to the deprecated metis plugin.",
+  "version": "0.1.0",
+  "author": {
+    "name": "chensagi"
+  },
+  "license": "MIT"
+}

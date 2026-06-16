@@ -104,3 +104,6 @@ bin/
 .metis/agents.json
 .metis/learnings.json
 .metis/tasks/
+
+# Local research scratch — raw external dumps (Grok/web) + compiled notes, not shared
+/research/
