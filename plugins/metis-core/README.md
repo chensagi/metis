@@ -1,5 +1,8 @@
 # metis
 
+> ⚠️ **Deprecated — superseded by the [`conductor`](../conductor/README.md) plugin.**
+> metis is kept side-by-side for existing users but is no longer developed. conductor is a full rewrite around current models: judgment-first, superpowers-native, with cost controlled by context isolation and an effort dial rather than cheap-model routing. New projects should use conductor.
+
 Self-evolving swarm orchestration for Claude Code. Ships with capability profiles that teach agents about your project's technology stack, plus learning that improves over time.
 
 **Core principle:** Deliver at the lowest cost possible. Every token is currency. Ask → Explore → Research → Plan → Execute.

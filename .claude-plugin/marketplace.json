@@ -6,9 +6,14 @@
   },
   "plugins": [
     {
+      "name": "conductor",
+      "source": "./plugins/conductor",
+      "description": "Budget-bounded orchestrator: frames a goal, plans with superpowers, dispatches isolated workers, verifies against a ground-truth oracle, and reports. Judgment-first, model-agnostic, superpowers-native. Successor to metis."
+    },
+    {
       "name": "metis",
       "source": "./plugins/metis-core",
-      "description": "Generic swarm orchestration — parallel task execution with automatic dependency management, budget tracking, and codebase-aware triage."
+      "description": "[DEPRECATED — superseded by conductor] Generic swarm orchestration — parallel task execution with automatic dependency management, budget tracking, and codebase-aware triage."
     },
     {
       "name": "ios-qa",
